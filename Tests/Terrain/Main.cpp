@@ -32,9 +32,6 @@
 #include "SGCore/Render/Atmosphere/Atmosphere.h"
 #include "SGCore/Physics/PhysicsWorld3D.h"
 
-#include <BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h>
-#include <BulletCollision/CollisionShapes/btCompoundShape.h>
-
 #include "SGCore/Navigation/NavGrid3D.h"
 #include "SGCore/Navigation/NavMesh/NavMesh.h"
 #include "SGCore/Navigation/NavMesh/Steps/InputFilteringStep.h"
@@ -42,6 +39,17 @@
 #include "SGCore/Render/DebugDraw.h"
 #include "SGCore/Render/Lighting/SpotLight.h"
 #include "SGCore/Render/Terrain/TerrainUtils.h"
+
+#include "SGCore/Render/Volumetric/VolumetricFog.h"
+
+#include "SGCore/Render/RenderAbilities/EnableDecalPass.h"
+#include "SGCore/Render/RenderAbilities/EnableTerrainPass.h"
+#include "SGCore/Render/RenderAbilities/EnableVolumetricPass.h"
+
+#include "SGCore/Math/Noise/FastNoiseLite.h"
+
+#include <BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h>
+#include <BulletCollision/CollisionShapes/btCompoundShape.h>
 
 #if SG_PLATFORM_OS_WINDOWS
 #ifdef __cplusplus
@@ -69,6 +77,7 @@ SGCore::ECS::entity_t lightEntity;
 SGCore::ECS::entity_t terrainEntity;
 SGCore::ECS::entity_t atmosphereEntity;
 SGCore::ECS::entity_t terrainDecalEntity;
+SGCore::ECS::entity_t cloudsEntity;
 
 SGCore::AssetRef<SGCore::ITexture2D> terrainHeightmapTex;
 
@@ -162,6 +171,9 @@ void regenerateTerrainPhysicalMesh(SGCore::ECS::entity_t terrainEntity)
 
 void regenerateTerrainNavGrid(SGCore::ECS::entity_t terrainEntity)
 {
+    // remove to generate
+    return;
+
     terrainDisplacedVertices.clear();
     terrainDisplacedIndices.clear();
 
@@ -205,6 +217,98 @@ void regenerateTerrainNavGrid(SGCore::ECS::entity_t terrainEntity)
     // terrainNavGrid.build(terrainDisplacedVertices, terrainDisplacedIndices, 4, terrainMeshData->m_aabb, *ecsRegistry);
 
     // std::cout << "terrain nav grid nodes count: " << terrainNavGrid.m_nodes.size() << std::endl;
+}
+
+SGCore::AssetRef<SGCore::ITexture2D> generateMultiOctaveCloudTexture3D(int width, int height, int depth, int seed)
+{
+    FastNoiseLite noises[4];
+
+    noises[0].SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2S);
+    noises[0].SetSeed(seed);
+    noises[0].SetFrequency(0.001f);
+    noises[0].SetFractalType(FastNoiseLite::FractalType_FBm);
+    noises[0].SetFractalOctaves(3);
+    noises[0].SetFractalLacunarity(2.0f);
+    noises[0].SetFractalGain(0.5f);
+    noises[0].SetFractalWeightedStrength(0.0f);
+    noises[0].SetRotationType3D(FastNoiseLite::RotationType3D_ImproveXYPlanes);
+
+    noises[1].SetNoiseType(FastNoiseLite::NoiseType_Cellular);
+    noises[1].SetSeed(seed + 1000);
+    noises[1].SetFrequency(0.003f);
+    // noises[1].SetFractalType(FastNoiseLite::FractalType_None);
+    noises[1].SetCellularDistanceFunction(FastNoiseLite::CellularDistanceFunction_Euclidean);
+    noises[1].SetCellularReturnType(FastNoiseLite::CellularReturnType_Distance2Div);
+    // noises[1].SetCellularJitter(0.75f);
+
+    noises[2].SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+    noises[2].SetSeed(seed + 2000);
+    noises[2].SetFrequency(0.01f);
+    noises[2].SetFractalType(FastNoiseLite::FractalType_FBm);
+    noises[2].SetFractalOctaves(2);
+    noises[2].SetFractalLacunarity(2.2f);
+    noises[2].SetFractalGain(0.4f);
+
+    noises[3].SetNoiseType(FastNoiseLite::NoiseType_Perlin);
+    noises[3].SetSeed(seed + 300);
+    noises[3].SetFrequency(0.001f);
+    noises[3].SetFractalType(FastNoiseLite::FractalType_FBm);
+    noises[3].SetFractalOctaves(2);
+    noises[3].SetFractalLacunarity(2.8f);
+    noises[3].SetFractalGain(0.35f);
+
+    float* noiseData = new float[width * height * depth * 4];
+
+    static const auto saturate = [](float f) {
+        return std::clamp(f, 0.0f, 1.0f);
+    };
+
+    static const auto increaseContrast= [](float value, float contrast) {
+        float midpoint = 0.5;
+        return (value - midpoint) * contrast + midpoint;
+    };
+
+#pragma omp parallel for collapse(3)
+    for(size_t z = 0; z < depth; ++z)
+    {
+        for(size_t y = 0; y < height; ++y)
+        {
+            for(size_t x = 0; x < width; ++x)
+            {
+                size_t index = (x + (y * width) + (z * width * height)) * 4;
+
+                const float fx = x;
+                const float fy = y;
+                const float fz = z;
+
+                const float perlinValue = noises[3].GetNoise(fx * 15.0f, fy * 15.0f, fz * 15.0f) * 0.5f + 0.5f; // Normalize to [0, 1]
+                const float worleyValue1 = noises[1].GetNoise(fx * 1.0f, fy * 1.0f, fz * 1.0f) * 0.5f + 0.5f;
+                const float worleyValue2 = noises[2].GetNoise(fx * 1.0f, fy * 1.0f, fz * 1.0f) * 0.5f + 0.5f;
+                const float worleyValue3 = noises[0].GetNoise(fx * 1.0f, fy * 1.0f, fz * 1.0f) * 0.5f + 0.5f;
+
+                /*float cloudBase = 1.0 - worleyValue1;
+
+                float cloudDetails = cloudBase * (1.0 + perlinValue * 0.3);
+
+                float clouds = saturate(cloudDetails * 1.5 - 0.3);*/
+                noiseData[index + 0] = perlinValue;
+                noiseData[index + 1] = worleyValue1;
+                noiseData[index + 2] = worleyValue2;
+                noiseData[index + 3] = worleyValue3;
+            }
+        }
+    }
+
+    auto noiseTexture = SGCore::AssetManager::getInstance()->getOrAddAssetByAlias<SGCore::ITexture2D>("cloud_texture_3d_multi");
+    noiseTexture->m_layersCount = depth;
+    noiseTexture->m_type = SGTextureType::SG_TEXTURE3D;
+    noiseTexture->m_dataType = SGGDataType::SGG_FLOAT;
+    noiseTexture->create(noiseData, width, height, 4,
+                        SGGColorInternalFormat::SGG_RGBA32_FLOAT,
+                        SGGColorFormat::SGG_RGBA);
+
+    delete[] noiseData;
+    return noiseTexture;
 }
 
 void coreInit()
@@ -292,7 +396,7 @@ void coreInit()
     auto cameraTransform = ecsRegistry->emplace<SGCore::Transform>(mainCamera, SGCore::MakeRef<SGCore::Transform>());
     ecsRegistry->emplace<SGCore::NonSavable>(mainCamera);
     ecsRegistry->emplace<SGCore::Camera3D>(mainCamera, SGCore::MakeRef<SGCore::Camera3D>());
-    ecsRegistry->emplace<SGCore::RenderingBase>(mainCamera, SGCore::MakeRef<SGCore::RenderingBase>());
+    ecsRegistry->emplace<SGCore::RenderingBase>(mainCamera, SGCore::MakeRef<SGCore::RenderingBase>())->m_zFar = 70000.0;
     ecsRegistry->emplace<SGCore::Controllable3D>(mainCamera)/*.m_movementSpeed = 100.0f*/;
     auto& cameraReceiver = ecsRegistry->emplace<SGCore::LayeredFrameReceiver>(mainCamera);
 
@@ -366,7 +470,7 @@ void coreInit()
 
     auto& skyboxTransform = scene->getECSRegistry()->get<SGCore::Transform>(atmosphereEntity);
 
-    skyboxTransform->m_ownTransform.m_scale = { 2000, 2000, 2000 };
+    skyboxTransform->m_ownTransform.m_scale = { 65000, 65000, 65000 };
 
     // =================================================================
 
@@ -412,6 +516,7 @@ void coreInit()
     terrainEntity = ecsRegistry->create();
 
     auto& terrainTransform = ecsRegistry->emplace<SGCore::Transform>(terrainEntity, SGCore::MakeRef<SGCore::Transform>());
+    ecsRegistry->emplace<SGCore::EnableTerrainPass>(terrainEntity);
     // terrainTransform->m_ownTransform.m_scale = { 0.1, 0.1, 0.1 };
     ecsRegistry->emplace<SGCore::NonSavable>(terrainEntity);
     auto& terrainMesh = ecsRegistry->emplace<SGCore::Mesh>(terrainEntity);
@@ -499,11 +604,37 @@ void coreInit()
     decalMesh.m_base.setMaterial(terrainDecalMaterial);
 
     auto& decalTransform = ecsRegistry->get<SGCore::Transform>(terrainDecalEntity);
+    ecsRegistry->emplace<SGCore::EnableDecalPass>(terrainDecalEntity);
     // decalTransform->m_ownTransform.m_scale.x *= 10.0;
     // decalTransform->m_ownTransform.m_scale.z *= 10.0;
     // decalTransform->m_ownTransform.m_scale.y = 5.0;
 
     // =================================================================
+    // =================================================================
+    // =================================================================
+
+    // creating volumetric clouds
+
+    cloudsEntity = ecsRegistry->create();
+
+    auto& volumetricFog = ecsRegistry->emplace<SGCore::VolumetricFog>(cloudsEntity);
+    auto& volumetricMesh = ecsRegistry->emplace<SGCore::Mesh>(cloudsEntity);
+    auto& cloudsTransform = ecsRegistry->emplace<SGCore::Transform>(cloudsEntity, SGCore::MakeRef<SGCore::Transform>());
+    ecsRegistry->emplace<SGCore::EnableVolumetricPass>(cloudsEntity);
+    cloudsTransform->m_ownTransform.m_position.y += 5000.0f;
+    // cloudsTransform->m_ownTransform.m_position.x += 1000.0f;
+    cloudsTransform->m_ownTransform.m_scale.x = 60000.0f;
+    cloudsTransform->m_ownTransform.m_scale.z = 60000.0f;
+    cloudsTransform->m_ownTransform.m_scale.y = 500.0f;
+
+    const auto standardCloudsMaterial = mainAssetManager->getOrAddAssetByAlias<SGCore::IMaterial>("standard_volumetric_clouds_material");
+    const auto standardCubeModel = mainAssetManager->loadAsset<SGCore::ModelAsset>("${enginePath}/Resources/models/standard/cube.obj");
+
+    standardCloudsMaterial->m_meshRenderState.m_useFacesCulling = false;
+    standardCloudsMaterial->addTexture2D(SGTextureSlot::SGTT_NOISE, generateMultiOctaveCloudTexture3D(256, 256, 256, 42));
+
+    volumetricMesh.m_base.setMeshData(standardCubeModel->m_rootNode->findMesh("cube"));
+    volumetricMesh.m_base.setMaterial(standardCloudsMaterial);
 
     // =================================================================
     // =================================================================
@@ -835,56 +966,15 @@ void onUpdate(const double& dt, const double& fixedDt)
         regenerateTerrainNavGrid(terrainEntity);
     }
 
-    if(debugDraw->m_mode != SGCore::DebugDrawMode::NO_DEBUG)
+    /*if(debugDraw->m_mode != SGCore::DebugDrawMode::NO_DEBUG)
     {
-        /*for(size_t i = 0; i < terrainDisplacedIndices.size(); i += 4)
-        {
-            const auto v0 = terrainDisplacedVertices[terrainDisplacedIndices[i]].m_position;
-            const auto v1 = terrainDisplacedVertices[terrainDisplacedIndices[i + 1]].m_position;
-            const auto v2 = terrainDisplacedVertices[terrainDisplacedIndices[i + 2]].m_position;
-            const auto v3 = terrainDisplacedVertices[terrainDisplacedIndices[i + 3]].m_position;
-
-            debugDraw->drawLine(v0, v1, { 0.47, 0.87, 0.78, 1.0 });
-            debugDraw->drawLine(v1, v2,  { 0.47, 0.87, 0.78, 1.0 });
-            debugDraw->drawLine(v2, v3,  { 0.47, 0.87, 0.78, 1.0 });
-            debugDraw->drawLine(v3, v0,  { 0.47, 0.87, 0.78, 1.0 });
-        }*/
-        /*for(const auto& node : terrainNavGrid.m_nodes)
-        {
-            const auto leftBottom = node.m_position - glm::vec3 { node.m_size / 2.0f, 0, node.m_size / 2.0f };
-            const auto leftTop = node.m_position + glm::vec3 { -node.m_size / 2.0f, 0.0f, node.m_size / 2.0f };
-            const auto rightTop = node.m_position + glm::vec3 { node.m_size / 2.0f, 0, node.m_size / 2.0f };
-            const auto rightBottom = node.m_position + glm::vec3 { node.m_size / 2.0f, 0.0f, -node.m_size / 2.0f };
-
-            debugDraw->drawLine(leftBottom, leftTop, { 0.47, 0.87, 0.78, 1.0 });
-            debugDraw->drawLine(leftTop, rightTop,  { 0.47, 0.87, 0.78, 1.0 });
-            debugDraw->drawLine(rightTop, rightBottom,  { 0.47, 0.87, 0.78, 1.0 });
-            debugDraw->drawLine(rightBottom, leftBottom,  { 0.47, 0.87, 0.78, 1.0 });
-
-            debugDraw->drawLine(node.m_position, node.m_position + glm::vec3 { 0.0f, 5.0f, 0.0f },  { 0.91, 0.40, 0.42, 1.0 });
-        }*/
-
         const auto inputFilteringStep = terrainNavMesh.getStep<SGCore::Navigation::InputFilteringStep>();
         const auto voxelizationStep = terrainNavMesh.getStep<SGCore::Navigation::VoxelizationStep>();
 
         const auto& navMeshConfig = terrainNavMesh.m_config;
 
-        /*for(const auto& tri : inputFilteringStep->m_walkableTriangles)
-        {
-            debugDraw->drawLine(tri.m_vertices[0], tri.m_vertices[1], { 0.47, 0.87, 0.78, 1.0 });
-            debugDraw->drawLine(tri.m_vertices[1], tri.m_vertices[2], { 0.47, 0.87, 0.78, 1.0 });
-            debugDraw->drawLine(tri.m_vertices[2], tri.m_vertices[0], { 0.47, 0.87, 0.78, 1.0 });
-        }*/
-
         for(const auto& voxel : voxelizationStep->m_voxels)
         {
-            /*const glm::vec3 min = voxelizationStep->voxelToWorld(
-                                                                      voxel.m_position, navMeshConfig.m_cellSize,
-                                                                      navMeshConfig.m_cellHeight) - glm::vec3(
-                                                                      navMeshConfig.m_cellSize * 0.5f,
-                                                                      navMeshConfig.m_cellHeight * 0.5f,
-                                                                      navMeshConfig.m_cellSize * 0.5f);*/
-
             const glm::vec3 min = voxelizationStep->voxelToWorld(
                                       voxel.m_position, navMeshConfig.m_cellSize,
                                       navMeshConfig.m_cellHeight) - glm::vec3(
@@ -907,38 +997,7 @@ void onUpdate(const double& dt, const double& fixedDt)
                 debugDraw->drawAABB(min, max, { 1.0, 0.0, 0.0, 1.0 });
             }
         }
-
-        /*for(std::int32_t z = 0; z < voxelizationStep->m_voxelGridDepth; ++z)
-        {
-            for(std::int32_t x = 0; x < voxelizationStep->m_voxelGridWidth; ++x)
-            {
-                for(std::int32_t y = 0; y < voxelizationStep->m_voxelGridHeight; ++y)
-                {
-                    auto& voxel = voxelizationStep->getVoxel(x, y, z);
-
-                    const glm::vec3 min = voxelizationStep->voxelToWorld(
-                                                                      { x, y, z }, navMeshConfig.m_cellSize,
-                                                                      navMeshConfig.m_cellHeight) - glm::vec3(
-                                                                      navMeshConfig.m_cellSize * 0.5f,
-                                                                      navMeshConfig.m_cellHeight * 0.5f,
-                                                                      navMeshConfig.m_cellSize * 0.5f);
-
-                    const glm::vec3 max = min + glm::vec3(navMeshConfig.m_cellSize,
-                                                          navMeshConfig.m_cellHeight,
-                                                          navMeshConfig.m_cellSize);
-
-                    if(voxel.m_isWalkable)
-                    {
-                        debugDraw->drawAABB(min, max, { 0.47, 0.87, 0.78, 1.0 });
-                    }
-                    else
-                    {
-                        debugDraw->drawAABB(min, max, { 1.0, 0.0, 0.0, 1.0 });
-                    }
-                }
-            }
-        }*/
-    }
+    }*/
 
     // debugDraw->drawLine({ 0, 0, 0 }, { 0, 10, 0 },  { 0.91, 0.40, 0.42, 1.0 });
 }
