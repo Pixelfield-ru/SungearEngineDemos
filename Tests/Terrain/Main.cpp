@@ -7,6 +7,7 @@
 #include <stb_image_write.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>
+#include <algorithm>
 
 #include "SGCore/ECS/Utils.h"
 #include "SGCore/Main/CoreMain.h"
@@ -225,9 +226,9 @@ SGCore::AssetRef<SGCore::ITexture2D> generateMultiOctaveCloudTexture3D(int width
 
     noises[0].SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2S);
     noises[0].SetSeed(seed);
-    noises[0].SetFrequency(0.001f);
+    noises[0].SetFrequency(0.6f);
     noises[0].SetFractalType(FastNoiseLite::FractalType_FBm);
-    noises[0].SetFractalOctaves(3);
+    noises[0].SetFractalOctaves(4);
     noises[0].SetFractalLacunarity(2.0f);
     noises[0].SetFractalGain(0.5f);
     noises[0].SetFractalWeightedStrength(0.0f);
@@ -235,15 +236,15 @@ SGCore::AssetRef<SGCore::ITexture2D> generateMultiOctaveCloudTexture3D(int width
 
     noises[1].SetNoiseType(FastNoiseLite::NoiseType_Cellular);
     noises[1].SetSeed(seed + 1000);
-    noises[1].SetFrequency(0.003f);
+    noises[1].SetFrequency(1.0f);
     // noises[1].SetFractalType(FastNoiseLite::FractalType_None);
     noises[1].SetCellularDistanceFunction(FastNoiseLite::CellularDistanceFunction_Euclidean);
     noises[1].SetCellularReturnType(FastNoiseLite::CellularReturnType_Distance2Div);
-    // noises[1].SetCellularJitter(0.75f);
+    noises[1].SetCellularJitter(0.85f);
 
     noises[2].SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
     noises[2].SetSeed(seed + 2000);
-    noises[2].SetFrequency(0.01f);
+    noises[2].SetFrequency(8.0f);
     noises[2].SetFractalType(FastNoiseLite::FractalType_FBm);
     noises[2].SetFractalOctaves(2);
     noises[2].SetFractalLacunarity(2.2f);
@@ -251,11 +252,11 @@ SGCore::AssetRef<SGCore::ITexture2D> generateMultiOctaveCloudTexture3D(int width
 
     noises[3].SetNoiseType(FastNoiseLite::NoiseType_Perlin);
     noises[3].SetSeed(seed + 300);
-    noises[3].SetFrequency(0.001f);
+    noises[3].SetFrequency(6.0f);
     noises[3].SetFractalType(FastNoiseLite::FractalType_FBm);
-    noises[3].SetFractalOctaves(2);
+    noises[3].SetFractalOctaves(4);
     noises[3].SetFractalLacunarity(2.8f);
-    noises[3].SetFractalGain(0.35f);
+    noises[3].SetFractalGain(0.5f);
 
     float* noiseData = new float[width * height * depth * 4];
 
@@ -268,6 +269,11 @@ SGCore::AssetRef<SGCore::ITexture2D> generateMultiOctaveCloudTexture3D(int width
         return (value - midpoint) * contrast + midpoint;
     };
 
+    const float invWidth = 1.0f / static_cast<float>(std::max(1, width - 1));
+    const float invHeight = 1.0f / static_cast<float>(std::max(1, height - 1));
+    const float invDepth = 1.0f / static_cast<float>(std::max(1, depth - 1));
+    const float warpAmp = 0.15f;
+
 #pragma omp parallel for collapse(3)
     for(size_t z = 0; z < depth; ++z)
     {
@@ -277,24 +283,31 @@ SGCore::AssetRef<SGCore::ITexture2D> generateMultiOctaveCloudTexture3D(int width
             {
                 size_t index = (x + (y * width) + (z * width * height)) * 4;
 
-                const float fx = x;
-                const float fy = y;
-                const float fz = z;
+                const float fx = static_cast<float>(x) * invWidth;
+                const float fy = static_cast<float>(y) * invHeight;
+                const float fz = static_cast<float>(z) * invDepth;
 
-                const float perlinValue = noises[3].GetNoise(fx * 15.0f, fy * 15.0f, fz * 15.0f) * 0.5f + 0.5f; // Normalize to [0, 1]
-                const float worleyValue1 = noises[1].GetNoise(fx * 1.0f, fy * 1.0f, fz * 1.0f) * 0.5f + 0.5f;
-                const float worleyValue2 = noises[2].GetNoise(fx * 1.0f, fy * 1.0f, fz * 1.0f) * 0.5f + 0.5f;
-                const float worleyValue3 = noises[0].GetNoise(fx * 1.0f, fy * 1.0f, fz * 1.0f) * 0.5f + 0.5f;
+                const float warpX = noises[0].GetNoise(fx, fy, fz);
+                const float warpY = noises[0].GetNoise(fx + 31.4f, fy + 17.1f, fz + 5.3f);
+                const float warpZ = noises[0].GetNoise(fx + 11.7f, fy + 73.2f, fz + 19.9f);
 
-                /*float cloudBase = 1.0 - worleyValue1;
+                const float wx = fx + warpX * warpAmp;
+                const float wy = fy + warpY * warpAmp;
+                const float wz = fz + warpZ * warpAmp;
 
-                float cloudDetails = cloudBase * (1.0 + perlinValue * 0.3);
+                const float perlinValue = noises[3].GetNoise(wx, wy, wz) * 0.5f + 0.5f;
+                const float worleyBase = noises[1].GetNoise(wx, wy, wz) * 0.5f + 0.5f;
+                const float worleyDetail = noises[2].GetNoise(wx, wy, wz) * 0.5f + 0.5f;
+                const float coverage = noises[0].GetNoise(fx, fy, fz) * 0.5f + 0.5f;
 
-                float clouds = saturate(cloudDetails * 1.5 - 0.3);*/
-                noiseData[index + 0] = perlinValue;
-                noiseData[index + 1] = worleyValue1;
-                noiseData[index + 2] = worleyValue2;
-                noiseData[index + 3] = worleyValue3;
+                const float baseClouds = saturate(increaseContrast(1.0f - worleyBase, 1.6f));
+                const float detailClouds = saturate(increaseContrast(1.0f - worleyDetail, 1.3f));
+                const float coverageClouds = saturate(increaseContrast(coverage, 1.2f));
+
+                noiseData[index + 0] = baseClouds;
+                noiseData[index + 1] = detailClouds;
+                noiseData[index + 2] = perlinValue;
+                noiseData[index + 3] = coverageClouds;
             }
         }
     }
@@ -621,11 +634,11 @@ void coreInit()
     auto& volumetricMesh = ecsRegistry->emplace<SGCore::Mesh>(cloudsEntity);
     auto& cloudsTransform = ecsRegistry->emplace<SGCore::Transform>(cloudsEntity, SGCore::MakeRef<SGCore::Transform>());
     ecsRegistry->emplace<SGCore::EnableVolumetricPass>(cloudsEntity);
-    cloudsTransform->m_ownTransform.m_position.y += 5000.0f;
+    cloudsTransform->m_ownTransform.m_position.y += 15000.0f;
     // cloudsTransform->m_ownTransform.m_position.x += 1000.0f;
     cloudsTransform->m_ownTransform.m_scale.x = 60000.0f;
     cloudsTransform->m_ownTransform.m_scale.z = 60000.0f;
-    cloudsTransform->m_ownTransform.m_scale.y = 500.0f;
+    cloudsTransform->m_ownTransform.m_scale.y = 2000.0f;
 
     const auto standardCloudsMaterial = mainAssetManager->getOrAddAssetByAlias<SGCore::IMaterial>("standard_volumetric_clouds_material");
     const auto standardCubeModel = mainAssetManager->loadAsset<SGCore::ModelAsset>("${enginePath}/Resources/models/standard/cube.obj");
