@@ -220,9 +220,89 @@ void regenerateTerrainNavGrid(SGCore::ECS::entity_t terrainEntity)
     // std::cout << "terrain nav grid nodes count: " << terrainNavGrid.m_nodes.size() << std::endl;
 }
 
-SGCore::AssetRef<SGCore::ITexture2D> generateMultiOctaveCloudTexture3D(int width, int height, int depth, int seed)
+std::pair<SGCore::AssetRef<SGCore::ITexture2D>, SGCore::AssetRef<SGCore::ITexture2D>> generateMultiOctaveCloudTexture3D(
+    int lowFreqSize, int highFreqSize, int seed)
 {
-    FastNoiseLite noises[4];
+    FastNoiseLite noises[3];
+
+    // низкочастотный шум перлина
+    noises[0].SetNoiseType(FastNoiseLite::NoiseType_Perlin);
+    noises[0].SetSeed(seed + 300);
+    noises[0].SetFrequency(6.0f);
+    noises[0].SetFractalType(FastNoiseLite::FractalType_FBm);
+    noises[0].SetFractalOctaves(4);
+    noises[0].SetFractalLacunarity(2.8f);
+    noises[0].SetFractalGain(0.5f);
+
+    // высокочастотный шум вороного
+    noises[1].SetNoiseType(FastNoiseLite::NoiseType_Cellular);
+    noises[1].SetSeed(seed + 1000);
+    noises[1].SetFrequency(3.0f);
+    noises[1].SetFractalType(FastNoiseLite::FractalType_FBm);
+    noises[1].SetFractalOctaves(10);
+
+    // низкочастотный шум вороного
+    noises[2].SetNoiseType(FastNoiseLite::NoiseType_Cellular);
+    noises[2].SetSeed(seed + 1500);
+    noises[2].SetFrequency(1.0f);
+    noises[2].SetFractalType(FastNoiseLite::FractalType_FBm);
+    noises[2].SetFractalOctaves(10);
+
+    static const auto saturate = [](auto value) {
+        return std::clamp(value, 0.0f, 1.0f);
+    };
+
+    static const auto getVorleyNoise = [](float value) {
+        return saturate((1.0f - value) * 0.5f - 0.25f);
+        // return saturate(1.0f - value);
+    };
+
+    static const auto remap = [](float value, float minValue, float maxValue, float newMinValue, float newMaxValue) {
+        return newMinValue + (value - minValue) / (maxValue - minValue) * (newMaxValue - newMinValue);
+    };
+
+    auto lowFreqNoiseData = std::vector<std::uint8_t>(lowFreqSize * lowFreqSize * lowFreqSize);
+    auto highFreqNoiseData = std::vector<std::uint8_t>(highFreqSize * highFreqSize * highFreqSize);
+
+    for(size_t z = 0; z < lowFreqSize; ++z)
+    {
+        for(size_t y = 0; y < lowFreqSize; ++y)
+        {
+            for(size_t x = 0; x < lowFreqSize; ++x)
+            {
+                size_t index = x + (y * lowFreqSize) + (z * lowFreqSize * lowFreqSize);
+
+                const float invWidth = 1.0f / static_cast<float>(std::max(1, lowFreqSize - 1));
+                const float invHeight = 1.0f / static_cast<float>(std::max(1, lowFreqSize - 1));
+                const float invDepth = 1.0f / static_cast<float>(std::max(1, lowFreqSize - 1));
+
+                const auto fx = static_cast<float>(x) * invWidth;
+                const auto fy = static_cast<float>(y) * invHeight;
+                const auto fz = static_cast<float>(z) * invDepth;
+
+                float perlin = noises[0].GetNoise(fx, fy, fz);
+                
+                float voronoi0 = noises[2].GetNoise(fx * 2.0f, fy * 2.0f , fz * 2.0f);
+                float worley0 = getVorleyNoise(voronoi0);
+                // ворлея с меньшим масштабом
+                float worley1 = getVorleyNoise(noises[2].GetNoise(fx * 4.0f, fy * 4.0f, fz * 4.0f));
+                // ворлея с ещё меньшим масшатбом
+                float worley2 = getVorleyNoise(noises[2].GetNoise(fx * 6.0f, fy * 6.0f, fz * 6.0f));
+
+                // std::cout << "vorley: " << worley0 << ", voronoi: " << voronoi0 << std::endl;
+
+                // объединяем 4 шума в одно значение
+                const auto finalValue = remap(perlin, (worley0 * 0.625f + worley1 * 0.25f + worley2 * 0.125f) - 1.0f, 1.0f, 0.0f, 1.0f);
+
+                // lowFreqNoiseData[index] = static_cast<std::uint8_t>(remap(worley0, -1.0f, 1.0f, 0.0f, 1.0f) * 255.0f);
+                // lowFreqNoiseData[index] = static_cast<std::uint8_t>(worley0 * 255.0f);
+                // lowFreqNoiseData[index] = static_cast<std::uint8_t>(voronoi0 * 255.0f);
+                lowFreqNoiseData[index] = std::clamp<std::uint8_t>(static_cast<std::uint8_t>(saturate(finalValue) * 255.0f * 1.5f), 0, 255);
+            }
+        }
+    }
+
+    /*FastNoiseLite noises[4];
 
     noises[0].SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2S);
     noises[0].SetSeed(seed);
@@ -264,7 +344,7 @@ SGCore::AssetRef<SGCore::ITexture2D> generateMultiOctaveCloudTexture3D(int width
         return std::clamp(f, 0.0f, 1.0f);
     };
 
-    static const auto increaseContrast= [](float value, float contrast) {
+    static const auto increaseContrast = [](float value, float contrast) {
         float midpoint = 0.5;
         return (value - midpoint) * contrast + midpoint;
     };
@@ -310,18 +390,25 @@ SGCore::AssetRef<SGCore::ITexture2D> generateMultiOctaveCloudTexture3D(int width
                 noiseData[index + 3] = coverageClouds;
             }
         }
-    }
+    }*/
 
-    auto noiseTexture = SGCore::AssetManager::getInstance()->getOrAddAssetByAlias<SGCore::ITexture2D>("cloud_texture_3d_multi");
-    noiseTexture->m_layersCount = depth;
-    noiseTexture->m_type = SGTextureType::SG_TEXTURE3D;
-    noiseTexture->m_dataType = SGGDataType::SGG_FLOAT;
-    noiseTexture->create(noiseData, width, height, 4,
-                        SGGColorInternalFormat::SGG_RGBA32_FLOAT,
-                        SGGColorFormat::SGG_RGBA);
+    auto lowFreqTexture = SGCore::AssetManager::getInstance()->getOrAddAssetByAlias<SGCore::ITexture2D>("cloud_texture_3d_low_freq");
+    lowFreqTexture->m_layersCount = lowFreqSize;
+    lowFreqTexture->m_type = SGTextureType::SG_TEXTURE3D;
+    lowFreqTexture->m_dataType = SGGDataType::SGG_UNSIGNED_BYTE;
+    lowFreqTexture->create(lowFreqNoiseData.data(), lowFreqSize, lowFreqSize, 1,
+                        SGGColorInternalFormat::SGG_R8,
+                        SGGColorFormat::SGG_R);
 
-    delete[] noiseData;
-    return noiseTexture;
+    auto highFreqTexture = SGCore::AssetManager::getInstance()->getOrAddAssetByAlias<SGCore::ITexture2D>("cloud_texture_3d_high_freq");
+    highFreqTexture->m_layersCount = highFreqSize;
+    highFreqTexture->m_type = SGTextureType::SG_TEXTURE3D;
+    highFreqTexture->m_dataType = SGGDataType::SGG_UNSIGNED_BYTE;
+    highFreqTexture->create(highFreqNoiseData.data(), highFreqSize, highFreqSize, 1,
+                        SGGColorInternalFormat::SGG_R8,
+                        SGGColorFormat::SGG_R);
+
+    return { lowFreqTexture, highFreqTexture };
 }
 
 void coreInit()
@@ -644,7 +731,7 @@ void coreInit()
     const auto standardCubeModel = mainAssetManager->loadAsset<SGCore::ModelAsset>("${enginePath}/Resources/models/standard/cube.obj");
 
     standardCloudsMaterial->m_meshRenderState.m_useFacesCulling = false;
-    standardCloudsMaterial->addTexture2D(SGTextureSlot::SGTT_NOISE, generateMultiOctaveCloudTexture3D(256, 256, 256, 42));
+    standardCloudsMaterial->addTexture2D(SGTextureSlot::SGTT_NOISE, generateMultiOctaveCloudTexture3D(128, 32, 42).first);
 
     volumetricMesh.m_base.setMeshData(standardCubeModel->m_rootNode->findMesh("cube"));
     volumetricMesh.m_base.setMaterial(standardCloudsMaterial);
