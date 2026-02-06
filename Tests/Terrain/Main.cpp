@@ -264,6 +264,7 @@ std::pair<SGCore::AssetRef<SGCore::ITexture2D>, SGCore::AssetRef<SGCore::ITextur
     auto lowFreqNoiseData = std::vector<std::uint8_t>(lowFreqSize * lowFreqSize * lowFreqSize);
     auto highFreqNoiseData = std::vector<std::uint8_t>(highFreqSize * highFreqSize * highFreqSize);
 
+    // low freq
     for(size_t z = 0; z < lowFreqSize; ++z)
     {
         for(size_t y = 0; y < lowFreqSize; ++y)
@@ -289,15 +290,44 @@ std::pair<SGCore::AssetRef<SGCore::ITexture2D>, SGCore::AssetRef<SGCore::ITextur
                 // ворлея с ещё меньшим масшатбом
                 float worley2 = getVorleyNoise(noises[2].GetNoise(fx * 6.0f, fy * 6.0f, fz * 6.0f));
 
-                // std::cout << "vorley: " << worley0 << ", voronoi: " << voronoi0 << std::endl;
-
                 // объединяем 4 шума в одно значение
                 const auto finalValue = remap(perlin, (worley0 * 0.625f + worley1 * 0.25f + worley2 * 0.125f) - 1.0f, 1.0f, 0.0f, 1.0f);
 
-                // lowFreqNoiseData[index] = static_cast<std::uint8_t>(remap(worley0, -1.0f, 1.0f, 0.0f, 1.0f) * 255.0f);
-                // lowFreqNoiseData[index] = static_cast<std::uint8_t>(worley0 * 255.0f);
-                // lowFreqNoiseData[index] = static_cast<std::uint8_t>(voronoi0 * 255.0f);
-                lowFreqNoiseData[index] = std::clamp<std::uint8_t>(static_cast<std::uint8_t>(saturate(finalValue) * 255.0f * 1.5f), 0, 255);
+                lowFreqNoiseData[index] = std::clamp<std::uint16_t>(static_cast<std::uint16_t>(saturate(finalValue) * 255.0f * 1.5f), 0, 255);
+            }
+        }
+    }
+
+    // high freq
+    for(size_t z = 0; z < highFreqSize; ++z)
+    {
+        for(size_t y = 0; y < highFreqSize; ++y)
+        {
+            for(size_t x = 0; x < highFreqSize; ++x)
+            {
+                size_t index = x + (y * highFreqSize) + (z * highFreqSize * highFreqSize);
+
+                const float invWidth = 1.0f / static_cast<float>(std::max(1, highFreqSize - 1));
+                const float invHeight = 1.0f / static_cast<float>(std::max(1, highFreqSize - 1));
+                const float invDepth = 1.0f / static_cast<float>(std::max(1, highFreqSize - 1));
+
+                const auto fx = static_cast<float>(x) * invWidth;
+                const auto fy = static_cast<float>(y) * invHeight;
+                const auto fz = static_cast<float>(z) * invDepth;
+
+                const float finalValue = noises[0].GetNoise(fx * 6.0f, fy * 6.0f, fz * 6.0f);
+
+                /*float voronoi0 = noises[1].GetNoise(fx * 2.0f, fy * 2.0f , fz * 2.0f);
+                float worley0 = getVorleyNoise(voronoi0);
+                // ворлея с меньшим масштабом
+                float worley1 = getVorleyNoise(noises[1].GetNoise(fx * 4.0f, fy * 4.0f, fz * 4.0f));
+                // ворлея с ещё меньшим масшатбом
+                float worley2 = getVorleyNoise(noises[1].GetNoise(fx * 6.0f, fy * 6.0f, fz * 6.0f));
+
+                // объединяем 4 шума в одно значение
+                const auto finalValue = worley0 * 0.625f + worley1 * 0.25f + worley2 * 0.125f;*/
+
+                highFreqNoiseData[index] = std::clamp<std::uint16_t>(static_cast<std::uint16_t>(saturate(finalValue) * 255.0f), 0, 255);
             }
         }
     }
@@ -413,6 +443,8 @@ std::pair<SGCore::AssetRef<SGCore::ITexture2D>, SGCore::AssetRef<SGCore::ITextur
 
 void coreInit()
 {
+    const std::string demosPath = SG_STRINGIFY_MACRO(SUNGEAR_DEMOS_ROOT);
+
     auto mainAssetManager = SGCore::AssetManager::getInstance();
 
     auto& pipelinesManager = SGCore::RenderPipelinesManager::instance();
@@ -730,8 +762,13 @@ void coreInit()
     const auto standardCloudsMaterial = mainAssetManager->getOrAddAssetByAlias<SGCore::IMaterial>("standard_volumetric_clouds_material");
     const auto standardCubeModel = mainAssetManager->loadAsset<SGCore::ModelAsset>("${enginePath}/Resources/models/standard/cube.obj");
 
+    const auto cloudsNoises = generateMultiOctaveCloudTexture3D(128, 32, 42);
+    const auto weatherMap = mainAssetManager->loadAsset<SGCore::ITexture2D>(demosPath / "Tests/Terrain/Resources/weather_map.png");
+
     standardCloudsMaterial->m_meshRenderState.m_useFacesCulling = false;
-    standardCloudsMaterial->addTexture2D(SGTextureSlot::SGTT_NOISE, generateMultiOctaveCloudTexture3D(128, 32, 42).first);
+    standardCloudsMaterial->addTexture2D(SGTextureSlot::SGTT_NOISE, cloudsNoises.first);
+    standardCloudsMaterial->addTexture2D(SGTextureSlot::SGTT_NOISE, cloudsNoises.second);
+    standardCloudsMaterial->addTexture2D(SGTextureSlot::SGTT_BASE_COLOR, weatherMap);
 
     volumetricMesh.m_base.setMeshData(standardCubeModel->m_rootNode->findMesh("cube"));
     volumetricMesh.m_base.setMaterial(standardCloudsMaterial);
