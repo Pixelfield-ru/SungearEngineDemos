@@ -40,6 +40,8 @@
 #include <SGCore/Memory/Assets/AnimationsFile.h>
 #include <SGCore/Memory/Assets/AudioTrackAsset.h>
 #include <SGCore/Coro/Task.h>
+#include <SGCore/Memory/Assets/GIF.h>
+#include <SGCore/Animation2D/FrameAnimation.h>
 
 #if SG_PLATFORM_OS_WINDOWS
 #ifdef __cplusplus
@@ -56,7 +58,7 @@ extern "C" {
 SGCore::Ref<SGCore::Scene> scene;
 SGCore::AssetRef<SGCore::ITexture2D> someTexture;
 SGCore::AssetRef<SGCore::AudioTrackAsset> copterSound;
-SGCore::MeshRenderState quadMeshRenderState;
+SGCore::AssetRef<SGCore::GIF> testGif0;
 
 SGCore::Ref<SGCore::ITexture2D> attachmentToDisplay;
 
@@ -157,7 +159,7 @@ void coreInit()
 
     std::vector<SGCore::ECS::entity_t> skyboxEntities;
     auto cubeModel =  SGCore::AssetManager::getInstance()->loadAsset<SGCore::ModelAsset>("cube_model");
-    cubeModel->m_rootNode->addOnScene(scene, SG_LAYER_OPAQUE_NAME, [&skyboxEntities](const auto& entity) {
+    cubeModel->m_rootNode->addOnScene(scene, SG_LAYER_OPAQUE_NAME, [&skyboxEntities](SGCore::ECS::entity_t entity) {
         skyboxEntities.push_back(entity);
         scene->getECSRegistry()->emplace<SGCore::IgnoreOctrees>(entity);
         scene->getECSRegistry()->remove<SGCore::Pickable>(entity);
@@ -206,7 +208,7 @@ void coreInit()
 
         std::vector<SGCore::ECS::entity_t> entities;
         modelAsset->m_rootNode->addOnScene(SGCore::Scene::getCurrentScene(), SG_LAYER_OPAQUE_NAME,
-                                           [&entities](const auto& entity) { entities.push_back(entity); });
+                                           [&entities](SGCore::ECS::entity_t entity) { entities.push_back(entity); });
 
         // adding animation
         {
@@ -304,7 +306,45 @@ void coreInit()
 
     // SGCore::AssetManager::getInstance()->loadAsset<SGCore::ModelAsset>(modelAsset, SGCore::AssetsLoadPolicy::PARALLEL_THEN_LAZYLOAD, "${enginePath}/Models/vss/scene.gltf");
 
-    // creating quad model for drawing camera framebuffer attachment to screen ======================================
+    // gif animation test ======================================
+
+    auto testGif = mainAssetManager->loadAsset<SGCore::GIF>(demosPath / "Tests/ModelDraw/Resources/test0.gif");
+    std::cout << "loaded gif with " << std::to_string(testGif->m_sequence.m_frames.size()) << " frames" << std::endl;
+
+    auto cubeTestMaterial = mainAssetManager->getOrAddAssetByAlias<SGCore::IMaterial>("cube_test_material");
+    cubeTestMaterial->m_meshRenderState.m_useFacesCulling = false;
+
+    std::vector<SGCore::ECS::entity_t> cubeEntities;
+    SGCore::ECS::entity_t cubeMeshEntity;
+    cubeModel->m_rootNode->addOnScene(scene, SG_LAYER_OPAQUE_NAME, [&](SGCore::ECS::entity_t entity) {
+        cubeEntities.push_back(entity);
+        if(ecsRegistry->allOf<SGCore::Mesh>(entity))
+        {
+            cubeMeshEntity = entity;
+        }
+    });
+
+    const auto cubeRootEntity = cubeEntities[0];
+
+    auto cubeTransform = ecsRegistry->get<SGCore::Transform>(cubeRootEntity);
+    cubeTransform->m_ownTransform.m_position = { 10, 0, 0 };
+
+    auto& cubeMesh = ecsRegistry->get<SGCore::Mesh>(cubeMeshEntity);
+    cubeMesh.m_base.setMaterial(cubeTestMaterial);
+
+    // testGif->m_sequence.calculateDelays(0.05f);
+
+    auto& cubeAnimation = ecsRegistry->emplace<SGCore::FrameAnimation>(cubeMeshEntity);
+    cubeAnimation.m_source = testGif;
+    // cubeAnimation.m_isReversed = true;
+    cubeAnimation.m_isRepeated = true;
+    // cubeAnimation.m_currentTime = testGif->m_sequence.m_frames.rbegin()->m_timeStamp + testGif->m_sequence.m_frames.rbegin()->m_nextFrameDelay;
+
+    cubeTestMaterial->addTexture2D(SGTextureSlot::SGTT_DIFFUSE, testGif->m_sequence.m_frames[0].m_texture);
+    /*if(!testGif->m_frames[0].m_texture)
+    {
+        std::cout << "texture is nullptr" << std::endl;
+    }*/
 }
 
 double g_dt = 0.0f;
