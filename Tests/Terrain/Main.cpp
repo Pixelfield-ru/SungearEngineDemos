@@ -702,7 +702,7 @@ void coreInit()
     );
 
     std::vector<SGCore::ECS::entity_t> testQuadEntities;
-    testModelAsset->m_rootNode->addOnScene(scene, SG_LAYER_OPAQUE_NAME, [&testQuadEntities, &testMaterial](const auto& entity) {
+    testModelAsset->m_rootNode->addOnScene(scene, [&testQuadEntities, &testMaterial](const auto& entity) {
         testQuadEntities.push_back(entity);
         scene->getECSRegistry()->emplace<SGCore::IgnoreOctrees>(entity);
         scene->getECSRegistry()->remove<SGCore::Pickable>(entity);

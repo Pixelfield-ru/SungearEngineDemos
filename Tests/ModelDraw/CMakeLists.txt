@@ -2,7 +2,7 @@ include($ENV{SUNGEAR_SOURCES_ROOT}/cmake/utils.cmake)
 
 project(SGModelDrawTest)
 
-set(SGPROJECT_SOURCES Main.cpp Main.h)
+set(SGPROJECT_SOURCES Main.cpp Main.h App.cpp App.h)
 
 add_executable(${PROJECT_NAME} ${SGPROJECT_SOURCES})
 

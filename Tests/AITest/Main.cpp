@@ -155,14 +155,8 @@ void coreInit()
     standardCubemapMaterial->m_meshRenderState.m_useFacesCulling = false;
     // standardCubemapMaterial->addTexture2D(SGTextureSlot::SGTT_SKYBOX, standardCubemap);
 
-    std::vector<SGCore::ECS::entity_t> skyboxEntities;
     auto cubeModel =  SGCore::AssetManager::getInstance()->loadAsset<SGCore::ModelAsset>("sphere_model");
-    cubeModel->m_rootNode->addOnScene(scene, SG_LAYER_OPAQUE_NAME, [&skyboxEntities](auto entity) {
-        skyboxEntities.push_back(entity);
-        scene->getECSRegistry()->emplace<SGCore::IgnoreOctrees>(entity);
-        scene->getECSRegistry()->remove<SGCore::Pickable>(entity);
-        scene->getECSRegistry()->remove<SGCore::TransparentEntityTag>(entity);
-    });
+    const auto skyboxEntities = cubeModel->m_rootNode->addOnScene(scene);
 
     atmosphereEntity = skyboxEntities[2];
 
@@ -199,12 +193,8 @@ void coreInit()
 
     // =================================== npc setup
     npcModel = SGCore::AssetManager::getInstance()->loadAsset<SGCore::ModelAsset>(demosPath + "/Tests/ModelDraw/Resources/Idle.fbx");
-    npcModel->m_rootNode->addOnScene(scene, SG_LAYER_OPAQUE_NAME, [&](auto entity) {
-        if(npcEntity == entt::null)
-        {
-            npcEntity = entity;
-        }
-    });
+    const auto npcEntities = npcModel->m_rootNode->addOnScene(scene);
+    npcEntity = npcEntities[0];
 
     auto& npcState = ecsRegistry->emplace<SGCore::GOAP::EntityState>(npcEntity);
     auto npcTransform = ecsRegistry->get<SGCore::Transform>(npcEntity);
@@ -233,12 +223,8 @@ void coreInit()
     vegetableModel = SGCore::AssetManager::getInstance()->loadAsset<SGCore::ModelAsset>(demosPath + "/Tests/AITest/Resources/vegetable_0/scene.gltf");
 
     cartModel = SGCore::AssetManager::getInstance()->loadAsset<SGCore::ModelAsset>(demosPath + "/Tests/AITest/Resources/cart/scene.gltf");
-    cartModel->m_rootNode->addOnScene(scene, SG_LAYER_OPAQUE_NAME, [&](auto entity) {
-        if(cartEntity == entt::null)
-        {
-            cartEntity = entity;
-        }
-    });
+    const auto cartEntities = cartModel->m_rootNode->addOnScene(scene);
+    cartEntity = cartEntities[0];
 
     ecsRegistry->emplace<Cart>(cartEntity);
 
@@ -248,13 +234,9 @@ void coreInit()
 
 SGCore::ECS::entity_t spawnVegetable(SGCore::ECS::registry_t& registry, const glm::vec3& position, const glm::vec3& scale)
 {
-    SGCore::ECS::entity_t vegetableEntity = entt::null;
-    vegetableModel->m_rootNode->addOnScene(scene, SG_LAYER_OPAQUE_NAME, [&](auto entity) {
-        if(vegetableEntity == entt::null)
-        {
-            vegetableEntity = entity;
-        }
-    });
+    const auto vegetableEntities = vegetableModel->m_rootNode->addOnScene(scene);
+
+    auto vegetableEntity = vegetableEntities[0];
 
     auto& transform = registry.get<SGCore::Transform>(vegetableEntity);
     transform->m_ownTransform.m_position = position;
