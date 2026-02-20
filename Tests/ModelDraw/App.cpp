@@ -110,8 +110,8 @@ void App::onInit() noexcept
             copterAudioSource.attachAudioTrack(m_copterSound);
             copterAudioSource.setRolloffFactor(0.5f);
             copterAudioSource.setIsLooping(true);
-            copterAudioSource.setState(SGCore::AudioSourceState::PLAYING);
-            copterAudioSource.setType(SGCore::AudioSourceType::POSITIONAL);
+            copterAudioSource.setState(SGCore::PlayableState::SG_PLAYING);
+            copterAudioSource.setType(SGCore::AudioSourceType::SG_WORLD);
 
             // SGCore::Transform::reg_t& huTaoTransform = SGCore::Scene::getCurrentScene()->getECSRegistry()->get<SGCore::Transform>(entities[0]);
 
