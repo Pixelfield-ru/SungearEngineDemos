@@ -18,6 +18,7 @@
 #include <SGCore/Memory/Assets/Materials/IMaterial.h>
 #include <SGCore/Render/Mesh.h>
 #include <SGCore/Coro/Task.h>
+#include <SGCore/Render/PostProcess/StandardFX/SSAO.h>
 
 SGCore::Coro::Task<> moveSmoothly(SGCore::ECS::entity_t entity, glm::vec3 to, float speed)
 {
@@ -263,6 +264,13 @@ void App::onUpdate(double dt, double fixedDt)
     if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_3))
     {
         m_testIdleNode->m_isPaused = !m_testIdleNode->m_isPaused;
+    }
+
+    if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_4))
+    {
+        auto& frameReceiver = currentScene->getECSRegistry()->get<SGCore::LayeredFrameReceiver>(getCameraEntity());
+        auto ssaoEffect = frameReceiver.getDefaultLayer()->getEffect<SGCore::SSAO>();
+        ssaoEffect->setEnabled(!ssaoEffect->isEnabled());
     }
 
     if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_MINUS))

@@ -4,6 +4,7 @@
 
 #include "App.h"
 
+#include <SGCore/Graphics/API/IFrameBuffer.h>
 #include <SGCore/Input/PCInput.h>
 #include <SGCore/Memory/Assets/ModelAsset.h>
 #include <SGCore/Navigation/NavMesh/NavMesh.h>
@@ -15,6 +16,9 @@
 #include <SGCore/Render/Mesh.h>
 #include <SGCore/Render/RenderingBase.h>
 #include <SGCore/Render/RenderPipelinesManager.h>
+#include <SGCore/Render/PostProcess/StandardFX/SSAO.h>
+#include <SGCore/Render/PostProcess/StandardFX/Vignette.h>
+#include <SGCore/Render/PostProcess/StandardFX/FilmGrain.h>
 
 void App::rebuildNavMesh(const std::vector<SGCore::ECS::entity_t>& meshedEntities) noexcept
 {
@@ -66,10 +70,23 @@ void App::onInit() noexcept
     auto& navMesh = ecsRegistry->emplace<SGCore::Navigation::NavMesh>(m_navMeshEntity);
     navMesh.useStandardSteps();
     navMesh.m_config.m_agentRadius = 0.5f;
+    // navMesh.m_config.m_agentHeight = 100.0f;
     navMesh.m_config.m_cellHeight = 1.0f;
     navMesh.m_config.m_cellSize = 1.0f;
     navMesh.m_config.m_agentMaxSlope = 40.0f;
-    navMesh.m_config.m_agentMaxClimb = 1.0f;
+    navMesh.m_config.m_agentMaxClimb = 2.0f;
+
+    auto& frameReceiver = ecsRegistry->get<SGCore::LayeredFrameReceiver>(getCameraEntity());
+
+    auto filmGrainFX = SGCore::MakeRef<SGCore::FilmGrain>();
+    filmGrainFX->setIntensity(0.3);
+    frameReceiver.getDefaultLayer()->addEffect(filmGrainFX);
+
+    auto vignetteFX = SGCore::MakeRef<SGCore::Vignette>();
+    vignetteFX->setRadius(0.5);
+    frameReceiver.getDefaultLayer()->addEffect(vignetteFX);
+
+    // ==========================================================
 
     onMouseScroll = [this, ecsRegistry](SGCore::Window&, double xScroll, double yScroll) {
         ecsRegistry->get<SGCore::RenderingBase>(getCameraEntity())->m_fov -= yScroll;
@@ -152,16 +169,28 @@ void App::onUpdate(double dt, double fixedDt) noexcept
                                                   navMeshConfig.m_cellHeight,
                                                   navMeshConfig.m_cellSize);
 
+            const glm::vec3 offset { 0.01, 0.01, 0.01 };
             if(voxel.m_isWalkable)
             {
-                debugDraw->drawAABB(min, max, { 0.47, 0.87, 0.78, 1.0 });
+                debugDraw->drawAABB(min + offset, max - offset, { 0.47, 0.87, 0.78, 1.0 });
             }
             else
             {
-                debugDraw->drawAABB(min, max, { 1.0, 0.0, 0.0, 1.0 });
+                debugDraw->drawAABB(min + offset, max - offset, { 1.0, 0.0, 0.0, 1.0 });
             }
         }
     }
+
+    if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_2))
+    {
+        auto shaders = SGCore::AssetManager::getInstance()->getAssetsWithType<SGCore::IShader>();
+        for(const auto& shader : shaders)
+        {
+            shader->reloadFromDisk();
+        }
+    }
+
+    SGCore::CoreMain::getWindow().setTitle("Navigation Test. FPS: " + std::to_string(SGCore::CoreMain::getFPS()));
 }
 
 void App::onFixedUpdate(double dt, double fixedDt) noexcept
