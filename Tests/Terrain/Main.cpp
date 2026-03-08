@@ -120,7 +120,7 @@ void createBallAndApplyImpulse(const glm::vec3& spherePos,
     auto sphereModel = SGCore::AssetManager::getInstance()->loadAsset<SGCore::ModelAsset>("sphere_model");
 
     std::vector<SGCore::ECS::entity_t> sphereEntities;
-    sphereModel->m_rootNode->addOnScene(scene, SG_LAYER_OPAQUE_NAME,
+    sphereModel->m_rootNode->addOnScene(scene,
         [&sphereEntities](const SGCore::ECS::entity_t& entity)
         {
             sphereEntities.push_back(entity);
@@ -586,7 +586,7 @@ void coreInit()
 
     std::vector<SGCore::ECS::entity_t> skyboxEntities;
     auto cubeModel =  SGCore::AssetManager::getInstance()->loadAsset<SGCore::ModelAsset>("sphere_model");
-    cubeModel->m_rootNode->addOnScene(scene, SG_LAYER_OPAQUE_NAME, [&skyboxEntities](const auto& entity) {
+    cubeModel->m_rootNode->addOnScene(scene, [&skyboxEntities](const auto& entity) {
         skyboxEntities.push_back(entity);
         scene->getECSRegistry()->emplace<SGCore::IgnoreOctrees>(entity);
         scene->getECSRegistry()->remove<SGCore::Pickable>(entity);

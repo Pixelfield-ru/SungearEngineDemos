@@ -2,7 +2,7 @@ include($ENV{SUNGEAR_SOURCES_ROOT}/cmake/utils.cmake)
 
 project(SGPhysicsTest)
 
-set(SGPROJECT_SOURCES Main.cpp Main.h)
+set(SGPROJECT_SOURCES Main.cpp App.cpp)
 
 add_executable(${PROJECT_NAME} ${SGPROJECT_SOURCES})
 

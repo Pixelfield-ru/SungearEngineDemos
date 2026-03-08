@@ -1,0 +1,11 @@
+Model Information:
+* title:	Floor - Marble Tiled Floor
+* source:	https://sketchfab.com/3d-models/floor-marble-tiled-floor-2b8040dbbcbc4b1894eb7cd1325a30ae
+* author:	tsteff63 (https://sketchfab.com/tsteff63)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Floor - Marble Tiled Floor" (https://sketchfab.com/3d-models/floor-marble-tiled-floor-2b8040dbbcbc4b1894eb7cd1325a30ae) by tsteff63 (https://sketchfab.com/tsteff63) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

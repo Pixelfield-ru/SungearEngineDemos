@@ -23,4 +23,6 @@ private:
 
     SGCore::ECS::entity_t m_navMeshEntity {};
     SGCore::AssetRef<SGCore::ModelAsset> m_locationModel;
+    SGCore::AssetRef<SGCore::ModelAsset> m_floorModel;
+    SGCore::AssetRef<SGCore::ModelAsset> m_cubeModel;
 };

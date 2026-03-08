@@ -19,6 +19,11 @@
 #include <SGCore/Render/PostProcess/StandardFX/SSAO.h>
 #include <SGCore/Render/PostProcess/StandardFX/Vignette.h>
 #include <SGCore/Render/PostProcess/StandardFX/FilmGrain.h>
+#include <SGCore/Render/PostProcess/StandardFX/SSR.h>
+#include <SGCore/Render/PostProcess/StandardFX/Bloom.h>
+#include <SGCore/Render/ShadowMapping/CSM/CSMTarget.h>
+#include <SGCore/Render/ShadowMapping/ShadowCaster.h>
+#include <SGCore/Render/Atmosphere/Atmosphere.h>
 
 void App::rebuildNavMesh(const std::vector<SGCore::ECS::entity_t>& meshedEntities) noexcept
 {
@@ -63,8 +68,37 @@ void App::onInit() noexcept
 
     auto assetManager = SGCore::AssetManager::getInstance();
 
-    m_locationModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/Navigation/Resources/location_1/ai_test.gltf");
-    m_locationModel->m_rootNode->addOnScene(SGCore::Scene::getCurrentScene());
+    auto& frameReceiver = ecsRegistry->get<SGCore::LayeredFrameReceiver>(getCameraEntity());
+    auto bloomLayer = frameReceiver.addLayer("BloomLayer");
+
+    auto& csmTarget = ecsRegistry->emplace<SGCore::CSMTarget>(getCameraEntity());
+
+    // m_locationModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/Navigation/Resources/location_1/ai_test.gltf");
+    m_locationModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/AITest/Resources/location_0/scene.gltf");
+    auto locationEntities = m_locationModel->m_rootNode->addOnScene(SGCore::Scene::getCurrentScene());
+    for(const auto& locationEntity : locationEntities)
+    {
+        if(ecsRegistry->allOf<SGCore::Mesh>(locationEntity))
+        {
+            ecsRegistry->emplace<SGCore::ShadowCaster>(locationEntity);
+        }
+    }
+
+    m_floorModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/Navigation/Resources/floor_2/scene.gltf");
+    auto floorEntities = m_floorModel->m_rootNode->addOnScene(SGCore::Scene::getCurrentScene());
+    auto floorTransform = ecsRegistry->get<SGCore::Transform>(floorEntities[0]);
+    floorTransform->m_ownTransform.m_position.y += 150.0f;
+    floorTransform->m_ownTransform.m_scale *= 0.1f;
+
+    m_cubeModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/Navigation/Resources/location_1/ai_test.gltf");
+    const auto cubeEntities = m_cubeModel->m_rootNode->addOnScene(SGCore::Scene::getCurrentScene());
+    for(auto&& cubeEntity : cubeEntities)
+    {
+        if(auto* mesh = ecsRegistry->tryGet<SGCore::Mesh>(cubeEntity))
+        {
+            mesh->m_base.m_layeredFrameReceiversMarkup[&frameReceiver] = bloomLayer;
+        }
+    }
 
     m_navMeshEntity = ecsRegistry->create();
     auto& navMesh = ecsRegistry->emplace<SGCore::Navigation::NavMesh>(m_navMeshEntity);
@@ -76,15 +110,28 @@ void App::onInit() noexcept
     navMesh.m_config.m_agentMaxSlope = 40.0f;
     navMesh.m_config.m_agentMaxClimb = 2.0f;
 
-    auto& frameReceiver = ecsRegistry->get<SGCore::LayeredFrameReceiver>(getCameraEntity());
+    {
+        auto filmGrainFX = SGCore::MakeRef<SGCore::FilmGrain>();
+        filmGrainFX->setIntensity(0.3);
+        frameReceiver.getDefaultLayer()->addEffect(filmGrainFX);
 
-    auto filmGrainFX = SGCore::MakeRef<SGCore::FilmGrain>();
-    filmGrainFX->setIntensity(0.3);
-    frameReceiver.getDefaultLayer()->addEffect(filmGrainFX);
+        auto vignetteFX = SGCore::MakeRef<SGCore::Vignette>();
+        vignetteFX->setRadius(0.5);
+        frameReceiver.getDefaultLayer()->addEffect(vignetteFX);
 
-    auto vignetteFX = SGCore::MakeRef<SGCore::Vignette>();
-    vignetteFX->setRadius(0.5);
-    frameReceiver.getDefaultLayer()->addEffect(vignetteFX);
+        auto ssrFX = SGCore::MakeRef<SGCore::SSR>();
+        frameReceiver.getDefaultLayer()->addEffect(ssrFX);
+    }
+
+    {
+        auto ssaoFX = SGCore::MakeRef<SGCore::SSAO>();
+        auto bloomFX = SGCore::MakeRef<SGCore::Bloom>();
+        auto ssrFX = SGCore::MakeRef<SGCore::SSR>();
+
+        bloomLayer->addEffect(ssaoFX);
+        bloomLayer->addEffect(ssrFX);
+        bloomLayer->addEffect(bloomFX);
+    }
 
     // ==========================================================
 
@@ -93,6 +140,9 @@ void App::onInit() noexcept
     };
 
     SGCore::Input::PC::onMouseScroll() += onMouseScroll;
+
+    SGCore::CoreMain::getWindow().setSwapInterval(false);
+    SGCore::CoreMain::getRenderTimer().setTargetFrameRate(200.0);
 }
 
 void App::onUpdate(double dt, double fixedDt) noexcept
@@ -188,6 +238,75 @@ void App::onUpdate(double dt, double fixedDt) noexcept
         {
             shader->reloadFromDisk();
         }
+    }
+
+    auto& frameReceiver = ecsRegistry->get<SGCore::LayeredFrameReceiver>(getCameraEntity());
+
+    if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_3))
+    {
+        for(const auto& layer : frameReceiver.getLayers())
+        {
+            auto fx = layer->getEffect<SGCore::SSAO>();
+            if(!fx) continue;
+
+            fx->setEnabled(!fx->isEnabled());
+        }
+    }
+
+    if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_4))
+    {
+        for(const auto& layer : frameReceiver.getLayers())
+        {
+            auto fx = layer->getEffect<SGCore::Vignette>();
+            if(!fx) continue;
+
+            fx->setEnabled(!fx->isEnabled());
+        }
+    }
+
+    if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_5))
+    {
+        for(const auto& layer : frameReceiver.getLayers())
+        {
+            auto fx = layer->getEffect<SGCore::FilmGrain>();
+            if(!fx) continue;
+
+            fx->setEnabled(!fx->isEnabled());
+        }
+    }
+
+    if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_6))
+    {
+        for(const auto& layer : frameReceiver.getLayers())
+        {
+            auto fx = layer->getEffect<SGCore::SSR>();
+            if(!fx) continue;
+
+            fx->setEnabled(!fx->isEnabled());
+        }
+    }
+
+    if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_7))
+    {
+        for(const auto& layer : frameReceiver.getLayers())
+        {
+            auto fx = layer->getEffect<SGCore::Bloom>();
+            if(!fx) continue;
+
+            fx->setEnabled(!fx->isEnabled());
+        }
+    }
+
+    auto& atmosphere = ecsRegistry->get<SGCore::Atmosphere>(getAtmosphereEntity());
+
+    if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_EQUAL))
+    {
+        atmosphere.m_sunRotation.x += 0.2;
+    }
+
+    if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_MINUS))
+    {
+        atmosphere.m_sunRotation.x -= 0.2;
     }
 
     SGCore::CoreMain::getWindow().setTitle("Navigation Test. FPS: " + std::to_string(SGCore::CoreMain::getFPS()));
