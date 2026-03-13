@@ -24,6 +24,7 @@ private:
     SGCore::ECS::entity_t m_playerEntity = entt::null;
     SGCore::ECS::entity_t m_floorEntity = entt::null;
     SGCore::ECS::entity_t m_humanEntity = entt::null;
+    SGCore::ECS::entity_t m_sphereEntity = entt::null;
 
     void createBallAndApplyImpulse(const glm::vec3& spherePos, const glm::vec3& impulse) noexcept;
 };

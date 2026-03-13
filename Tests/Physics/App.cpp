@@ -4,6 +4,7 @@
 
 #include "App.h"
 
+#include <glm/gtx/euler_angles.hpp>
 #include <SGCore/Input/PCInput.h>
 #include <SGCore/Main/CoreMain.h>
 #include <SGCore/Memory/AssetManager.h>
@@ -13,6 +14,7 @@
 #include <SGCore/Physics/PhysicsWorld3D.h>
 #include <SGCore/Physics/Ragdoll3D.h>
 #include <SGCore/Scene/Scene.h>
+#include <SGCore/Transformations/TransformationsUpdater.h>
 
 void App::createBallAndApplyImpulse(const glm::vec3& spherePos, const glm::vec3& impulse) noexcept
 {
@@ -50,6 +52,8 @@ void App::onInit() noexcept
     auto scene = SGCore::Scene::getCurrentScene();
     auto ecsRegistry = scene->getECSRegistry();
     auto physicsWorld = scene->getSystem<SGCore::PhysicsWorld3D>();
+
+    SGCore::TransformationsUpdater;
 
     auto assetManager = SGCore::AssetManager::getInstance();
 
@@ -125,31 +129,49 @@ void App::onInit() noexcept
 
     const auto& humanBones = m_humanSkeleton->getAllBones();
 
-    static auto addBoneShape = [](const SGCore::Ref<SGCore::Rigidbody3D>& boneRigidbody, float mass, float radius, SGCore::PhysicalObjectType objectType) {
+    static auto addShape = [](const SGCore::Ref<SGCore::Rigidbody3D>& rigidbody, float mass, float radius, SGCore::PhysicalObjectType objectType) {
         SGCore::Ref<btSphereShape> sphereRigidbody3DShape = SGCore::MakeRef<btSphereShape>(radius);
         btTransform shapeTransform;
         shapeTransform.setIdentity();
-        boneRigidbody->addShape(shapeTransform, sphereRigidbody3DShape);
-        boneRigidbody->setType(objectType);
-        boneRigidbody->m_body->setRestitution(0.0);
-        boneRigidbody->m_body->setFriction(0.8f);
+        rigidbody->addShape(shapeTransform, sphereRigidbody3DShape);
+        rigidbody->setType(objectType);
+        rigidbody->m_body->setRestitution(0.0);
+        rigidbody->m_body->setFriction(0.8f);
         btVector3 inertia(0, 0, 0);
-        boneRigidbody->m_body->getCollisionShape()->calculateLocalInertia(mass, inertia);
-        boneRigidbody->m_body->setMassProps(mass, inertia);
-        boneRigidbody->reAddToWorld();
+        rigidbody->m_body->getCollisionShape()->calculateLocalInertia(mass, inertia);
+        rigidbody->m_body->setMassProps(mass, inertia);
+        rigidbody->reAddToWorld();
     };
 
-    const auto createBoneRigidbody = [&](SGCore::ECS::entity_t boneEntity) {
-        return ecsRegistry->emplace<SGCore::Rigidbody3D>(boneEntity, SGCore::MakeRef<SGCore::Rigidbody3D>(physicsWorld));
+    const auto createRigidbody = [&](SGCore::ECS::entity_t entity) {
+        return ecsRegistry->emplace<SGCore::Rigidbody3D>(entity, SGCore::MakeRef<SGCore::Rigidbody3D>(physicsWorld));
     };
 
-    const auto hips = humanEntityInfo.findEntity(*ecsRegistry, "mixamorig:Hips");
+    const auto sphere0Entities = m_sphereModel->m_rootNode->addOnScene(scene);
+    const auto sphere1Entities = m_sphereModel->m_rootNode->addOnScene(scene);
+
+    m_sphereEntity = sphere0Entities[0];
+    const auto sphere1 = sphere1Entities[0];
+
+    ecsRegistry->get<SGCore::Transform>(sphere1)->m_ownTransform.m_scale *= 2.0f;
+    ecsRegistry->get<SGCore::Transform>(sphere1)->m_ownTransform.m_position += 20.0f;
+
+    const auto sphere0Rigidbody = createRigidbody(m_sphereEntity);
+    const auto sphere1Rigidbody = createRigidbody(sphere1);
+
+    addShape(sphere0Rigidbody, 100.0f, 1.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);
+    addShape(sphere1Rigidbody, 100.0f, 2.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);
+
+    auto& sphere1BaseInfo = ecsRegistry->get<SGCore::EntityBaseInfo>(sphere1);
+    sphere1BaseInfo.setParent(m_sphereEntity, *ecsRegistry);
+
+    /*const auto hips = humanEntityInfo.findEntity(*ecsRegistry, "mixamorig:Hips");
     auto hipsRigidbody = createBoneRigidbody(hips);
     addBoneShape(hipsRigidbody, 100.0f, 1.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);
 
     const auto spine = humanEntityInfo.findEntity(*ecsRegistry, "mixamorig:Spine");
     auto spineRigidbody = createBoneRigidbody(spine);
-    addBoneShape(spineRigidbody, 10.0f, 1.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);
+    addBoneShape(spineRigidbody, 100.0f, 1.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);*/
     // spineRigidbody->m_body->setGravity({ 0.0, 0.0, 0.0 });
 
     /*auto constraintInfo = humanRagdoll.addConstraint(hips, spine, *ecsRegistry);
@@ -186,6 +208,7 @@ void App::onUpdate(double dt, double fixedDt) noexcept
     auto scene = SGCore::Scene::getCurrentScene();
     auto ecsRegistry = scene->getECSRegistry();
     auto physicsWorld = scene->getSystem<SGCore::PhysicsWorld3D>();
+    auto sphereRigidbody = ecsRegistry->get<SGCore::Rigidbody3D>(m_sphereEntity);
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_1))
     {
@@ -210,6 +233,42 @@ void App::onUpdate(double dt, double fixedDt) noexcept
     {
         physicsWorld->m_simulate = !physicsWorld->m_simulate;
     }
+
+    if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_3))
+    {
+        auto& rigidbodyTransform = sphereRigidbody->m_body->getWorldTransform();
+
+        const auto btRotation = rigidbodyTransform.getRotation();
+        const auto glmRotation = glm::quat(btRotation.w(), btRotation.x(), btRotation.y(), btRotation.z());
+
+        glm::vec3 eulerAngles(glm::radians(0.0f),
+                          glm::radians(1.0f),
+                          glm::radians(1.0f));
+
+        const auto rotated = glm::quat(eulerAngles) * glmRotation;
+
+        rigidbodyTransform.setRotation({ rotated.x, rotated.y, rotated.z, rotated.w });
+    }
+
+    if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_4))
+    {
+        auto& rigidbodyTransform = sphereRigidbody->m_body->getWorldTransform();
+
+        const auto btPos = rigidbodyTransform.getOrigin();
+        auto glmPos = glm::vec3(btPos.x(), btPos.y(), btPos.z());
+
+        glmPos += glm::vec3(1.0f, 1.0f, 0.0f);
+
+        rigidbodyTransform.setOrigin({ glmPos.x, glmPos.y, glmPos.z });
+    }
+
+    /*auto humanTransform = ecsRegistry->get<SGCore::Transform>(m_humanEntity);
+
+    glm::vec3 eulerAngles(glm::radians(1.0f),
+                          glm::radians(1.0f),
+                          glm::radians(1.0f));
+
+    humanTransform->m_ownTransform.m_rotation = glm::quat(eulerAngles) * humanTransform->m_ownTransform.m_rotation;*/
 }
 
 void App::onFixedUpdate(double dt, double fixedDt) noexcept
