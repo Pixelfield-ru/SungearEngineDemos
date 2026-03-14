@@ -149,29 +149,42 @@ void App::onInit() noexcept
 
     const auto sphere0Entities = m_sphereModel->m_rootNode->addOnScene(scene);
     const auto sphere1Entities = m_sphereModel->m_rootNode->addOnScene(scene);
+    const auto sphere2Entities = m_sphereModel->m_rootNode->addOnScene(scene);
 
-    m_sphereEntity = sphere0Entities[0];
-    const auto sphere1 = sphere1Entities[0];
+    m_sphere0Entity = sphere0Entities[0];
+    m_sphere1Entity = sphere1Entities[0];
+    m_sphere2Entity = sphere2Entities[0];
 
-    ecsRegistry->get<SGCore::Transform>(sphere1)->m_ownTransform.m_scale *= 2.0f;
-    ecsRegistry->get<SGCore::Transform>(sphere1)->m_ownTransform.m_position += 20.0f;
+    ecsRegistry->get<SGCore::Transform>(m_sphere1Entity)->m_ownTransform.m_scale *= 2.0f;
+    ecsRegistry->get<SGCore::Transform>(m_sphere1Entity)->m_ownTransform.m_position.x = 20.0f;
+    ecsRegistry->get<SGCore::Transform>(m_sphere2Entity)->m_ownTransform.m_scale *= 2.0f;
+    ecsRegistry->get<SGCore::Transform>(m_sphere2Entity)->m_ownTransform.m_position.x = -20.0f;
+    ecsRegistry->get<SGCore::Transform>(m_sphere2Entity)->m_ownTransform.m_position.z = -20.0f;
 
-    const auto sphere0Rigidbody = createRigidbody(m_sphereEntity);
-    const auto sphere1Rigidbody = createRigidbody(sphere1);
+    const auto sphere0Rigidbody = createRigidbody(m_sphere0Entity);
+    const auto sphere1Rigidbody = createRigidbody(m_sphere1Entity);
+    const auto sphere2Rigidbody = createRigidbody(m_sphere2Entity);
 
     addShape(sphere0Rigidbody, 100.0f, 1.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);
-    addShape(sphere1Rigidbody, 100.0f, 2.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);
+    addShape(sphere1Rigidbody, 100.0f, 4.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);
+    addShape(sphere2Rigidbody, 100.0f, 2.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);
 
-    auto& sphere1BaseInfo = ecsRegistry->get<SGCore::EntityBaseInfo>(sphere1);
-    sphere1BaseInfo.setParent(m_sphereEntity, *ecsRegistry);
+    auto& sphere1BaseInfo = ecsRegistry->get<SGCore::EntityBaseInfo>(m_sphere1Entity);
+    auto& sphere2BaseInfo = ecsRegistry->get<SGCore::EntityBaseInfo>(m_sphere2Entity);
+    // sphere1BaseInfo.setParent(m_sphere0Entity, *ecsRegistry);
+    // sphere1BaseInfo.setParent(sphere0Entities[1], *ecsRegistry);
+    sphere1BaseInfo.setParent(m_sphere2Entity, *ecsRegistry);
+    sphere2BaseInfo.setParent(m_sphere0Entity, *ecsRegistry);
 
-    /*const auto hips = humanEntityInfo.findEntity(*ecsRegistry, "mixamorig:Hips");
-    auto hipsRigidbody = createBoneRigidbody(hips);
-    addBoneShape(hipsRigidbody, 100.0f, 1.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);
+    // adding ragdoll
+
+    const auto hips = humanEntityInfo.findEntity(*ecsRegistry, "mixamorig:Hips");
+    auto hipsRigidbody = createRigidbody(hips);
+    addShape(hipsRigidbody, 100.0f, 1.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);
 
     const auto spine = humanEntityInfo.findEntity(*ecsRegistry, "mixamorig:Spine");
-    auto spineRigidbody = createBoneRigidbody(spine);
-    addBoneShape(spineRigidbody, 100.0f, 1.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);*/
+    auto spineRigidbody = createRigidbody(spine);
+    addShape(spineRigidbody, 100.0f, 1.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);
     // spineRigidbody->m_body->setGravity({ 0.0, 0.0, 0.0 });
 
     /*auto constraintInfo = humanRagdoll.addConstraint(hips, spine, *ecsRegistry);
@@ -208,7 +221,8 @@ void App::onUpdate(double dt, double fixedDt) noexcept
     auto scene = SGCore::Scene::getCurrentScene();
     auto ecsRegistry = scene->getECSRegistry();
     auto physicsWorld = scene->getSystem<SGCore::PhysicsWorld3D>();
-    auto sphereRigidbody = ecsRegistry->get<SGCore::Rigidbody3D>(m_sphereEntity);
+    auto sphere0Rigidbody = ecsRegistry->get<SGCore::Rigidbody3D>(m_sphere0Entity);
+    auto sphere1Rigidbody = ecsRegistry->get<SGCore::Rigidbody3D>(m_sphere1Entity);
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_1))
     {
@@ -236,7 +250,7 @@ void App::onUpdate(double dt, double fixedDt) noexcept
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_3))
     {
-        auto& rigidbodyTransform = sphereRigidbody->m_body->getWorldTransform();
+        auto& rigidbodyTransform = sphere0Rigidbody->m_body->getWorldTransform();
 
         const auto btRotation = rigidbodyTransform.getRotation();
         const auto glmRotation = glm::quat(btRotation.w(), btRotation.x(), btRotation.y(), btRotation.z());
@@ -252,7 +266,7 @@ void App::onUpdate(double dt, double fixedDt) noexcept
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_4))
     {
-        auto& rigidbodyTransform = sphereRigidbody->m_body->getWorldTransform();
+        auto& rigidbodyTransform = sphere0Rigidbody->m_body->getWorldTransform();
 
         const auto btPos = rigidbodyTransform.getOrigin();
         auto glmPos = glm::vec3(btPos.x(), btPos.y(), btPos.z());
@@ -260,6 +274,38 @@ void App::onUpdate(double dt, double fixedDt) noexcept
         glmPos += glm::vec3(1.0f, 1.0f, 0.0f);
 
         rigidbodyTransform.setOrigin({ glmPos.x, glmPos.y, glmPos.z });
+    }
+
+    if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_5))
+    {
+        auto cameraTransform = ecsRegistry->get<SGCore::Transform>(getCameraEntity());
+
+        cameraTransform->m_ownTransform.m_position.x = 20000.0f;
+    }
+
+    if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_6))
+    {
+        auto& rigidbodyTransform = sphere0Rigidbody->m_body->getWorldTransform();
+
+        const auto rotated = glm::identity<glm::quat>();
+
+        rigidbodyTransform.setRotation({ rotated.x, rotated.y, rotated.z, rotated.w });
+    }
+
+    if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_7))
+    {
+        auto& rigidbodyTransform = sphere1Rigidbody->m_body->getWorldTransform();
+
+        const auto btRotation = rigidbodyTransform.getRotation();
+        const auto glmRotation = glm::quat(btRotation.w(), btRotation.x(), btRotation.y(), btRotation.z());
+
+        glm::vec3 eulerAngles(glm::radians(0.0f),
+                          glm::radians(1.0f),
+                          glm::radians(1.0f));
+
+        const auto rotated = glm::quat(eulerAngles) * glmRotation;
+
+        rigidbodyTransform.setRotation({ rotated.x, rotated.y, rotated.z, rotated.w });
     }
 
     /*auto humanTransform = ecsRegistry->get<SGCore::Transform>(m_humanEntity);
