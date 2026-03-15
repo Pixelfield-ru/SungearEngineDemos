@@ -15,6 +15,7 @@
 #include <SGCore/Physics/Ragdoll3D.h>
 #include <SGCore/Scene/Scene.h>
 #include <SGCore/Transformations/TransformationsUpdater.h>
+#include <SGCore/Transformations/TransformUtils.h>
 
 void App::createBallAndApplyImpulse(const glm::vec3& spherePos, const glm::vec3& impulse) noexcept
 {
@@ -155,11 +156,23 @@ void App::onInit() noexcept
     m_sphere1Entity = sphere1Entities[0];
     m_sphere2Entity = sphere2Entities[0];
 
-    ecsRegistry->get<SGCore::Transform>(m_sphere1Entity)->m_ownTransform.m_scale *= 2.0f;
-    ecsRegistry->get<SGCore::Transform>(m_sphere1Entity)->m_ownTransform.m_position.x = 20.0f;
-    ecsRegistry->get<SGCore::Transform>(m_sphere2Entity)->m_ownTransform.m_scale *= 2.0f;
-    ecsRegistry->get<SGCore::Transform>(m_sphere2Entity)->m_ownTransform.m_position.x = -20.0f;
-    ecsRegistry->get<SGCore::Transform>(m_sphere2Entity)->m_ownTransform.m_position.z = -20.0f;
+    auto sphere0Transform =  ecsRegistry->get<SGCore::Transform>(m_sphere0Entity);
+    auto sphere1Transform =  ecsRegistry->get<SGCore::Transform>(m_sphere1Entity);
+    auto sphere2Transform =  ecsRegistry->get<SGCore::Transform>(m_sphere2Entity);
+
+
+    sphere0Transform->m_ownTransform.m_position.y += 20.0f;
+
+    sphere1Transform->m_ownTransform.m_scale *= 2.0f;
+    sphere1Transform->m_ownTransform.m_position.x = 20.0f;
+
+    sphere2Transform->m_ownTransform.m_scale *= 2.0f;
+    sphere2Transform->m_ownTransform.m_position.x = -20.0f;
+    sphere2Transform->m_ownTransform.m_position.z = -20.0f;
+
+    SGCore::TransformUtils::calculateTransform(*sphere0Transform, nullptr, nullptr);
+    SGCore::TransformUtils::calculateTransform(*sphere2Transform, sphere0Transform.get(), nullptr);
+    SGCore::TransformUtils::calculateTransform(*sphere1Transform, sphere2Transform.get(), nullptr);
 
     const auto sphere0Rigidbody = createRigidbody(m_sphere0Entity);
     const auto sphere1Rigidbody = createRigidbody(m_sphere1Entity);
@@ -178,13 +191,13 @@ void App::onInit() noexcept
 
     // adding ragdoll
 
-    const auto hips = humanEntityInfo.findEntity(*ecsRegistry, "mixamorig:Hips");
+    /*const auto hips = humanEntityInfo.findEntity(*ecsRegistry, "mixamorig:Hips");
     auto hipsRigidbody = createRigidbody(hips);
     addShape(hipsRigidbody, 100.0f, 1.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);
 
     const auto spine = humanEntityInfo.findEntity(*ecsRegistry, "mixamorig:Spine");
     auto spineRigidbody = createRigidbody(spine);
-    addShape(spineRigidbody, 100.0f, 1.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);
+    addShape(spineRigidbody, 100.0f, 1.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);*/
     // spineRigidbody->m_body->setGravity({ 0.0, 0.0, 0.0 });
 
     /*auto constraintInfo = humanRagdoll.addConstraint(hips, spine, *ecsRegistry);
