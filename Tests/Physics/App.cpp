@@ -170,10 +170,6 @@ void App::onInit() noexcept
     sphere2Transform->m_ownTransform.m_position.x = -20.0f;
     sphere2Transform->m_ownTransform.m_position.z = -20.0f;
 
-    SGCore::TransformUtils::calculateTransform(*sphere0Transform, nullptr, nullptr);
-    SGCore::TransformUtils::calculateTransform(*sphere2Transform, sphere0Transform.get(), nullptr);
-    SGCore::TransformUtils::calculateTransform(*sphere1Transform, sphere2Transform.get(), nullptr);
-
     const auto sphere0Rigidbody = createRigidbody(m_sphere0Entity);
     const auto sphere1Rigidbody = createRigidbody(m_sphere1Entity);
     const auto sphere2Rigidbody = createRigidbody(m_sphere2Entity);
@@ -235,11 +231,13 @@ void App::onUpdate(double dt, double fixedDt) noexcept
     auto ecsRegistry = scene->getECSRegistry();
     auto physicsWorld = scene->getSystem<SGCore::PhysicsWorld3D>();
     auto sphere0Rigidbody = ecsRegistry->get<SGCore::Rigidbody3D>(m_sphere0Entity);
+    auto sphere0Transform = ecsRegistry->get<SGCore::Transform>(m_sphere0Entity);
     auto sphere1Rigidbody = ecsRegistry->get<SGCore::Rigidbody3D>(m_sphere1Entity);
+
+    auto& cameraTransform = ecsRegistry->get<SGCore::Transform>(getCameraEntity());
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_1))
     {
-        auto& cameraTransform = ecsRegistry->get<SGCore::Transform>(getCameraEntity());
         createBallAndApplyImpulse(cameraTransform->m_ownTransform.m_position, cameraTransform->m_ownTransform.m_forward * 200000.0f / 10.0f);
     }
 
@@ -263,7 +261,7 @@ void App::onUpdate(double dt, double fixedDt) noexcept
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_3))
     {
-        auto& rigidbodyTransform = sphere0Rigidbody->m_body->getWorldTransform();
+        /*auto& rigidbodyTransform = sphere0Rigidbody->m_body->getWorldTransform();
 
         const auto btRotation = rigidbodyTransform.getRotation();
         const auto glmRotation = glm::quat(btRotation.w(), btRotation.x(), btRotation.y(), btRotation.z());
@@ -274,19 +272,25 @@ void App::onUpdate(double dt, double fixedDt) noexcept
 
         const auto rotated = glm::quat(eulerAngles) * glmRotation;
 
-        rigidbodyTransform.setRotation({ rotated.x, rotated.y, rotated.z, rotated.w });
+        rigidbodyTransform.setRotation({ rotated.x, rotated.y, rotated.z, rotated.w });*/
+
+        const auto impulseDir = cameraTransform->m_ownTransform.m_forward * 2000.0f / 10.0f;
+
+        sphere0Rigidbody->m_body->applyCentralImpulse({ impulseDir.x, impulseDir.y, impulseDir.z });
     }
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_4))
     {
-        auto& rigidbodyTransform = sphere0Rigidbody->m_body->getWorldTransform();
+        sphere0Transform->m_ownTransform.m_position += glm::vec3 { 1.0f };
+
+        /*auto& rigidbodyTransform = sphere0Rigidbody->m_body->getWorldTransform();
 
         const auto btPos = rigidbodyTransform.getOrigin();
         auto glmPos = glm::vec3(btPos.x(), btPos.y(), btPos.z());
 
         glmPos += glm::vec3(1.0f, 1.0f, 0.0f);
 
-        rigidbodyTransform.setOrigin({ glmPos.x, glmPos.y, glmPos.z });
+        rigidbodyTransform.setOrigin({ glmPos.x, glmPos.y, glmPos.z });*/
     }
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_5))
