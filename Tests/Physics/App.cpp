@@ -4,6 +4,10 @@
 
 #include "App.h"
 
+#define GLM_ENABLE_EXPERIMENTAL
+
+#include <glm/gtx/string_cast.hpp>
+
 #include <glm/gtx/euler_angles.hpp>
 #include <SGCore/Input/PCInput.h>
 #include <SGCore/Main/CoreMain.h>
@@ -16,6 +20,9 @@
 #include <SGCore/Scene/Scene.h>
 #include <SGCore/Transformations/TransformationsUpdater.h>
 #include <SGCore/Transformations/TransformUtils.h>
+
+#include <BulletDynamics/ConstraintSolver/btConeTwistConstraint.h>
+#include <BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h>
 
 void App::createBallAndApplyImpulse(const glm::vec3& spherePos, const glm::vec3& impulse) noexcept
 {
@@ -130,11 +137,27 @@ void App::onInit() noexcept
 
     const auto& humanBones = m_humanSkeleton->getAllBones();
 
-    static auto addShape = [](const SGCore::Ref<SGCore::Rigidbody3D>& rigidbody, float mass, float radius, SGCore::PhysicalObjectType objectType) {
-        SGCore::Ref<btSphereShape> sphereRigidbody3DShape = SGCore::MakeRef<btSphereShape>(radius);
+    static auto addShape = [](const SGCore::Ref<SGCore::Rigidbody3D>& rigidbody, float mass, float radius, SGCore::PhysicalObjectType objectType, glm::vec3 shapeOffset = {}) {
+        auto shape = SGCore::MakeRef<btSphereShape>(radius);
         btTransform shapeTransform;
         shapeTransform.setIdentity();
-        rigidbody->addShape(shapeTransform, sphereRigidbody3DShape);
+        shapeTransform.setOrigin({ shapeOffset.x, shapeOffset.y, shapeOffset.z });
+        rigidbody->addShape(shapeTransform, shape);
+        rigidbody->setType(objectType);
+        rigidbody->m_body->setRestitution(0.0);
+        rigidbody->m_body->setFriction(0.8f);
+        btVector3 inertia(0, 0, 0);
+        rigidbody->m_body->getCollisionShape()->calculateLocalInertia(mass, inertia);
+        rigidbody->m_body->setMassProps(mass, inertia);
+        rigidbody->reAddToWorld();
+    };
+
+    static auto addCapsuleShape = [](const SGCore::Ref<SGCore::Rigidbody3D>& rigidbody, float mass, float radius, float height, SGCore::PhysicalObjectType objectType, glm::vec3 shapeOffset = {}) {
+        auto shape = SGCore::MakeRef<btCapsuleShape>(radius, height);
+        btTransform shapeTransform;
+        shapeTransform.setIdentity();
+        shapeTransform.setOrigin({ shapeOffset.x, shapeOffset.y, shapeOffset.z });
+        rigidbody->addShape(shapeTransform, shape);
         rigidbody->setType(objectType);
         rigidbody->m_body->setRestitution(0.0);
         rigidbody->m_body->setFriction(0.8f);
@@ -187,19 +210,29 @@ void App::onInit() noexcept
 
     // adding ragdoll
 
-    /*const auto hips = humanEntityInfo.findEntity(*ecsRegistry, "mixamorig:Hips");
+    const auto hips = humanEntityInfo.findEntity(*ecsRegistry, "mixamorig:Hips");
     auto hipsRigidbody = createRigidbody(hips);
-    addShape(hipsRigidbody, 100.0f, 1.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);
+    addShape(hipsRigidbody, 15.0f, 1.0f, SGCore::PhysicalObjectType::OT_DYNAMIC, { 0.0f, 0.0f, 0.0f });
 
     const auto spine = humanEntityInfo.findEntity(*ecsRegistry, "mixamorig:Spine");
     auto spineRigidbody = createRigidbody(spine);
-    addShape(spineRigidbody, 100.0f, 1.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);*/
+    // addShape(spineRigidbody, 8.0f, 1.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);
+    addCapsuleShape(spineRigidbody, 8.0f, 1.0f, 2.0f, SGCore::PhysicalObjectType::OT_DYNAMIC, { 0.0f, 2.0f, 0.0f });
     // spineRigidbody->m_body->setGravity({ 0.0, 0.0, 0.0 });
 
-    /*auto constraintInfo = humanRagdoll.addConstraint(hips, spine, *ecsRegistry);
-    constraintInfo.m_constraint->setLimit(0, 100.0f);
-    constraintInfo.m_constraint->setLimit(1, 100.0f);
-    constraintInfo.m_constraint->setLimit(2, 100.0f);*/
+    {
+        auto constraintInfo = humanRagdoll.addConeTwistConstraint(hips, spine, *ecsRegistry);
+        auto constraint = std::static_pointer_cast<btConeTwistConstraint>(constraintInfo.m_constraint);
+        constraint->setLimit(glm::radians(90.0f), // swing span1 (вперед-назад)
+                             glm::radians(30.0f), // swing span2 (в стороны)
+                             0.1f);
+    }
+
+    {
+        auto constraintInfo = humanRagdoll.addPointToPointConstraint(hips, spine, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, *ecsRegistry);
+        auto constraint = std::static_pointer_cast<btPoint2PointConstraint>(constraintInfo.m_constraint);
+        constraint->m_setting.m_tau = 0.1f;
+    }
 
     /*for(const auto& bone : humanBones)
     {
@@ -233,12 +266,15 @@ void App::onUpdate(double dt, double fixedDt) noexcept
     auto sphere0Rigidbody = ecsRegistry->get<SGCore::Rigidbody3D>(m_sphere0Entity);
     auto sphere0Transform = ecsRegistry->get<SGCore::Transform>(m_sphere0Entity);
     auto sphere1Rigidbody = ecsRegistry->get<SGCore::Rigidbody3D>(m_sphere1Entity);
+    auto sphere1Transform = ecsRegistry->get<SGCore::Transform>(m_sphere1Entity);
+
+    // std::println(std::cout, "sphere1Transform pos: {}", glm::to_string(sphere1Transform->m_finalTransform.m_position));
 
     auto& cameraTransform = ecsRegistry->get<SGCore::Transform>(getCameraEntity());
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_1))
     {
-        createBallAndApplyImpulse(cameraTransform->m_ownTransform.m_position, cameraTransform->m_ownTransform.m_forward * 200000.0f / 10.0f);
+        createBallAndApplyImpulse(cameraTransform->m_finalTransform.m_position, cameraTransform->m_finalTransform.m_forward * 200000.0f / 10.0f);
     }
 
     if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_M))
@@ -295,9 +331,14 @@ void App::onUpdate(double dt, double fixedDt) noexcept
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_5))
     {
-        auto cameraTransform = ecsRegistry->get<SGCore::Transform>(getCameraEntity());
+        glm::vec3 eulerAngles(glm::radians(0.0f),
+                          glm::radians(1.0f),
+                          glm::radians(1.0f));
 
-        cameraTransform->m_ownTransform.m_position.x = 20000.0f;
+        sphere0Transform->m_ownTransform.m_rotation = glm::quat(eulerAngles) * sphere0Transform->m_ownTransform.m_rotation;
+
+
+        // rigidbodyTransform.setRotation({ rotated.x, rotated.y, rotated.z, rotated.w });
     }
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_6))
@@ -336,5 +377,4 @@ void App::onUpdate(double dt, double fixedDt) noexcept
 
 void App::onFixedUpdate(double dt, double fixedDt) noexcept
 {
-
 }
