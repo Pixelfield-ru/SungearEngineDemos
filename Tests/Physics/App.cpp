@@ -125,7 +125,7 @@ void App::onInit() noexcept
     m_humanEntity = humanEntities[0];
 
     auto humanTransform = ecsRegistry->get<SGCore::Transform>(m_humanEntity);
-    auto& humanRagdoll = ecsRegistry->emplace<SGCore::Ragdoll3D>(m_humanEntity, physicsWorld);
+    auto& humanRagdoll = ecsRegistry->emplace<SGCore::Ragdoll3D>(m_humanEntity);
     auto& motionPlanner = SGCore::Scene::getCurrentScene()->getECSRegistry()->emplace<SGCore::MotionPlanner>(m_humanEntity);
     auto& humanEntityInfo = ecsRegistry->get<SGCore::EntityBaseInfo>(m_humanEntity);
 
@@ -221,7 +221,7 @@ void App::onInit() noexcept
     // spineRigidbody->m_body->setGravity({ 0.0, 0.0, 0.0 });
 
     {
-        auto constraintInfo = humanRagdoll.addConeTwistConstraint(hips, spine, *ecsRegistry);
+        auto constraintInfo = hipsRigidbody->addConeTwistConstraint(*spineRigidbody, *ecsRegistry);
         auto constraint = std::static_pointer_cast<btConeTwistConstraint>(constraintInfo.m_constraint);
         constraint->setLimit(glm::radians(90.0f), // swing span1 (вперед-назад)
                              glm::radians(30.0f), // swing span2 (в стороны)
@@ -229,7 +229,7 @@ void App::onInit() noexcept
     }
 
     {
-        auto constraintInfo = humanRagdoll.addPointToPointConstraint(hips, spine, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, *ecsRegistry);
+        auto constraintInfo = hipsRigidbody->addPointToPointConstraint(*spineRigidbody, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, *ecsRegistry);
         auto constraint = std::static_pointer_cast<btPoint2PointConstraint>(constraintInfo.m_constraint);
         constraint->m_setting.m_tau = 0.1f;
     }
