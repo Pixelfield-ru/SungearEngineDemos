@@ -7,7 +7,6 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/ext.hpp>
 
-#include <SGCore/Animation2D/FrameAnimation.h>
 #include <SGCore/Audio/AudioSource.h>
 #include <SGCore/Input/PCInput.h>
 #include <SGCore/Memory/AssetManager.h>
@@ -19,6 +18,10 @@
 #include <SGCore/Render/Mesh.h>
 #include <SGCore/Coro/Task.h>
 #include <SGCore/Render/PostProcess/StandardFX/SSAO.h>
+#include <SGCore/Animation/AnimationsTree.h>
+#include <SGCore/Animation/SkeletalAnimationNode.h>
+#include <SGCore/Animation/GotoAnimationNode.h>
+#include <SGCore/Animation/WhenAnimationEndAction.h>
 
 SGCore::Coro::Task<> moveSmoothly(SGCore::ECS::entity_t entity, glm::vec3 to, float speed)
 {
@@ -63,7 +66,7 @@ void App::onInit() noexcept
 
     auto modelAsset = SGCore::AssetManager::getInstance()->createAndAddAsset<SGCore::ModelAsset>();
 
-    auto& modelAssetLoadSlot = modelAsset->onLazyLoadDone += [this, demosPath](SGCore::IAsset* thisAsset) {
+    auto& modelAssetLoadSlot = modelAsset->onLazyLoadDone += [this, demosPath, ecsRegistry](SGCore::IAsset* thisAsset) {
         auto* modelAsset = static_cast<SGCore::ModelAsset*>(thisAsset);
 
         // auto modelSkeletonAsset = SGCore::AssetManager::getInstance()->loadAsset<SGCore::Skeleton>("${enginePath}/Tests/ModelDraw/Resources/fsb_operator/scene.gltf/skeletons/GLTF_created_0_rootJoint");
@@ -86,6 +89,8 @@ void App::onInit() noexcept
         {
             m_characterEntity = entities[0];
 
+            auto characterEntityTransform = ecsRegistry->get<SGCore::Transform>(m_characterEntity);
+
             /*auto animations0 = SGCore::AssetManager::getInstance()->loadAsset<SGCore::AnimationsFile>("${enginePath}/Tests/ModelDraw/Resources/Walking.fbx");
             auto animations1 = SGCore::AssetManager::getInstance()->loadAsset<SGCore::AnimationsFile>("${enginePath}/Tests/ModelDraw/Resources/Idle.fbx");
 
@@ -101,9 +106,10 @@ void App::onInit() noexcept
             auto animations0 = SGCore::AssetManager::getInstance()->loadAsset<SGCore::AnimationsFile>(demosPath / "Tests/ModelDraw/Resources/drone/scene.gltf/animations");
             // auto animations0 = SGCore::AssetManager::getInstance()->loadAsset<SGCore::AnimationsFile>("${enginePath}/Tests/ModelDraw/Resources/hu_tao_animated/scene.gltf/animations");
 
-            auto& motionPlanner = SGCore::Scene::getCurrentScene()->getECSRegistry()->emplace<SGCore::MotionPlanner>(
-                entities[0]);
+            auto& motionPlanner = SGCore::Scene::getCurrentScene()->getECSRegistry()->emplace<SGCore::MotionPlanner>(entities[0]);
             motionPlanner.m_skeleton = modelSkeletonAsset;
+
+            auto& animationsTree = SGCore::Scene::getCurrentScene()->getECSRegistry()->emplace<SGCore::AnimationsTree>(entities[0]);
 
             auto& copterAudioSource = SGCore::Scene::getCurrentScene()->getECSRegistry()->emplace<SGCore::AudioSource>(
                 entities[0]);
@@ -157,14 +163,39 @@ void App::onInit() noexcept
             idleNode->m_connections.push_back(walkConnection);
             walkNode->m_connections.push_back(runConnection);*/
 
-            auto idleNode = SGCore::MotionPlannerNode::createNode();
+            auto idleNode = SGCore::MakeRef<SGCore::SkeletalAnimationNode>();
             idleNode->m_animationSpeed = 1.0f;
-            idleNode->m_isRepeated = true;
+            idleNode->m_isLooping = true;
             idleNode->m_skeletalAnimation = animations0->m_skeletalAnimations[0];
+
+            auto gotoNode0 = SGCore::MakeRef<SGCore::GotoAnimationNode>();
+            gotoNode0->m_animationSpeed = 0.05f;
+            gotoNode0->m_destination = glm::vec3 { 0.0f, 10.0f, 0.0f };
+            gotoNode0->m_useBlend = true;
+            gotoNode0->m_interpolate = true;
+
+            auto gotoNode1 = SGCore::MakeRef<SGCore::GotoAnimationNode>();
+            gotoNode1->m_animationSpeed = 0.05f;
+            gotoNode1->m_destination = glm::vec3 { 0.0f, 10.0f, 10.0f };
+            gotoNode1->m_useBlend = true;
+            gotoNode1->m_interpolate = true;
+
+            auto gotoConnection0 = SGCore::MakeRef<SGCore::AnimationNodeConnection>();
+            gotoConnection0->m_nextNode = gotoNode1;
+            gotoConnection0->m_previousNode = gotoNode0;
+            /*auto gotoConnection0Activation = SGCore::MakeRef<SGCore::WhenAnimationEndAction>();
+            gotoConnection0Activation->m_animationNode = gotoNode0;
+            gotoConnection0Activation->m_entity = m_characterEntity;
+            gotoConnection0Activation->m_inRegistry = ecsRegistry;*/
+            auto gotoConnection0Activation = SGCore::MakeRef<SGCore::AlwaysTrueAction>();
+            gotoConnection0->m_activationAction = gotoConnection0Activation;
+
+            gotoNode0->m_connections.push_back(gotoConnection0);
 
             m_testIdleNode = idleNode;
 
-            motionPlanner.m_rootNodes.push_back(idleNode);
+            animationsTree.m_rootNodes.push_back(idleNode);
+            animationsTree.m_rootNodes.push_back(gotoNode0);
         }
     };
 
@@ -210,13 +241,11 @@ void App::onInit() noexcept
 
     // testGif->m_sequence.calculateDelays(0.05f);
 
-    auto& cubeAnimation = ecsRegistry->emplace<SGCore::FrameAnimation>(cubeMeshEntity);
+    /*auto& cubeAnimation = ecsRegistry->emplace<SGCore::FrameAnimation>(cubeMeshEntity);
     cubeAnimation.m_source = testGif;
-    // cubeAnimation.m_isReversed = true;
     cubeAnimation.m_isRepeated = true;
-    // cubeAnimation.m_currentTime = testGif->m_sequence.m_frames.rbegin()->m_timeStamp + testGif->m_sequence.m_frames.rbegin()->m_nextFrameDelay;
 
-    cubeTestMaterial->addTexture2D(SGTextureSlot::SGTT_DIFFUSE, testGif->m_sequence.m_frames[0].m_texture);
+    cubeTestMaterial->addTexture2D(SGTextureSlot::SGTT_DIFFUSE, testGif->m_sequence.m_frames[0].m_texture);*/
 }
 
 void App::onUpdate(double dt, double fixedDt)
@@ -263,7 +292,14 @@ void App::onUpdate(double dt, double fixedDt)
 
     if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_3))
     {
-        m_testIdleNode->m_isPaused = !m_testIdleNode->m_isPaused;
+        if(m_testIdleNode->getState() == SGCore::PlayableState::SG_PAUSED)
+        {
+            m_testIdleNode->setState(SGCore::PlayableState::SG_PLAYING);
+        }
+        else
+        {
+            m_testIdleNode->setState(SGCore::PlayableState::SG_PAUSED);
+        }
     }
 
     if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_4))
