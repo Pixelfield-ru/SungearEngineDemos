@@ -135,12 +135,12 @@ void coreInit()
         std::cout << "glfw error after glfwSetCharCallback: " << error << std::endl;
     }
 
-    SGCore::Input::PC::onKeyboardKeyEvent += [](SGCore::Window& inWindow, SGCore::Input::KeyboardKey key, int scancode, SGCore::Input::KeyState state, int mods) {
-        if(key == SGCore::Input::KeyboardKey::KEY_BACKSPACE && (state == SGCore::Input::KeyState::REPEAT || state == SGCore::Input::KeyState::PRESS) && !myText.empty())
+    SGCore::Input::PC::onKeyboardKeyEvent() += [](SGCore::Window& inWindow, SGCore::Input::KeyboardKey key, int scancode, SGCore::Input::KeyState state, int mods) {
+        if(key == SGCore::Input::KeyboardKey::KEY_BACKSPACE && (state == SGCore::Input::KeyState::KS_REPEAT || state == SGCore::Input::KeyState::KS_PRESSED) && !myText.empty())
         {
             myText.erase(myText.length() - 1);
         }
-        else if(key == SGCore::Input::KeyboardKey::KEY_ENTER && (state == SGCore::Input::KeyState::REPEAT || state == SGCore::Input::KeyState::PRESS))
+        else if(key == SGCore::Input::KeyboardKey::KEY_ENTER && (state == SGCore::Input::KeyState::KS_REPEAT || state == SGCore::Input::KeyState::KS_PRESSED))
         {
             myText += U'\n';
         }
