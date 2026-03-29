@@ -68,6 +68,8 @@ void App::onInit() noexcept
     cameraTransform->m_ownTransform.m_position = { 0.0f, 5.0f, 10.0f };
     cameraTransform->m_ownTransform.m_rotation *= glm::quat({ glm::radians(-20.0f), glm::radians(0.0f), glm::radians(0.0f) });
     // cameraTransform->m_ownTransform.m_yawPitchRoll = { -20.0f, 0.0f, 0.0f };
+
+    // =================================================================
 }
 
 void App::onUpdate(double dt, double fixedDt)

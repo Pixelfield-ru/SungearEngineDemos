@@ -22,6 +22,8 @@
 #include <SGCore/Animation/SkeletalAnimationNode.h>
 #include <SGCore/Animation/GotoAnimationNode.h>
 #include <SGCore/Animation/WhenAnimationEndAction.h>
+#include <SGCore/Motion/IK/IKRootJoint.h>
+#include <SGCore/Motion/IK/IKJoint.h>
 
 SGCore::Coro::Task<> moveSmoothly(SGCore::ECS::entity_t entity, glm::vec3 to, float speed)
 {
@@ -239,6 +241,61 @@ void App::onInit() noexcept
     auto& cubeMesh = ecsRegistry->get<SGCore::Mesh>(cubeMeshEntity);
     cubeMesh.m_base.setMaterial(cubeTestMaterial);
 
+    m_roboarmModel = SGCore::AssetManager::getInstance()->loadAsset<SGCore::ModelAsset>(
+        demosPath / "Tests/ModelDraw/Resources/roboarm_0/scene.gltf");
+    /*m_roboarmSkeleton = SGCore::AssetManager::getInstance()->loadAsset<SGCore::Skeleton>(
+        demosPath / "Tests/ModelDraw/Resources/roboarm/Roboarm.gltf/skeletons/RoboArm"
+    );*/
+    auto roboarmAnimations = SGCore::AssetManager::getInstance()->loadAsset<SGCore::AnimationsFile>(demosPath / "Tests/ModelDraw/Resources/roboarm_0/scene.gltf/animations");
+
+    if(!roboarmAnimations)
+    {
+        std::cout << "Failed to load roboarm animations" << std::endl;
+    }
+
+    m_roboarmEntity = m_roboarmModel->m_rootNode->addOnScene(scene)[0];
+
+    auto roboarmTransform = ecsRegistry->get<SGCore::Transform>(m_roboarmEntity);
+    roboarmTransform->m_ownTransform.m_scale *= 12.0f;
+
+    auto& roboarmInfo = ecsRegistry->get<SGCore::EntityBaseInfo>(m_roboarmEntity);
+
+    auto& roboarmMotionPlanner = ecsRegistry->emplace<SGCore::MotionPlanner>(m_roboarmEntity);
+    // roboarmMotionPlanner.m_skeleton = m_roboarmSkeleton;
+
+    auto& animationsTree = SGCore::Scene::getCurrentScene()->getECSRegistry()->emplace<SGCore::AnimationsTree>(m_roboarmEntity);
+
+    auto roboarm_rootJoint = roboarmInfo.findEntity(*ecsRegistry, "_rootJoint");
+    ecsRegistry->emplace<SGCore::IKRootJoint>(roboarm_rootJoint);
+
+    auto roboarm_joint1_00 = roboarmInfo.findEntity(*ecsRegistry, "joint1_00");
+    ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint1_00);
+
+    auto roboarm_joint2_01 = roboarmInfo.findEntity(*ecsRegistry, "joint2_01");
+    ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint2_01);
+
+    auto roboarm_joint3_02 = roboarmInfo.findEntity(*ecsRegistry, "joint3_02");
+    ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint3_02);
+
+    auto roboarm_joint4_03 = roboarmInfo.findEntity(*ecsRegistry, "joint4_03");
+    ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint4_03);
+
+    auto roboarm_joint5_04 = roboarmInfo.findEntity(*ecsRegistry, "joint5_04");
+    ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint5_04);
+
+    auto roboarm_joint6_05 = roboarmInfo.findEntity(*ecsRegistry, "joint6_05");
+    auto& endJoint = ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint6_05);
+
+    endJoint.m_isEndJoint = true;
+    endJoint.m_targetPosition = glm::vec3 { 0.0f, 0.3f, 0.0f };
+
+    /*auto takeNode = SGCore::MakeRef<SGCore::SkeletalAnimationNode>();
+    takeNode->m_animationSpeed = 1.0f;
+    takeNode->m_isLooping = true;
+    takeNode->m_skeletalAnimation = roboarmAnimations->m_skeletalAnimations[0];
+
+    animationsTree.m_rootNodes.push_back(takeNode);*/
+
     // testGif->m_sequence.calculateDelays(0.05f);
 
     /*auto& cubeAnimation = ecsRegistry->emplace<SGCore::FrameAnimation>(cubeMeshEntity);
@@ -317,6 +374,11 @@ void App::onUpdate(double dt, double fixedDt)
     if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_KP_ADD))
     {
         m_testIdleNode->m_animationSpeed += 0.1f;
+    }
+
+    if(SGCore::Input::PC::mouseButtonPressed(SGCore::Input::MouseButton::MOUSE_BUTTON_LEFT))
+    {
+
     }
 }
 
