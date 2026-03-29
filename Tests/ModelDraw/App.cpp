@@ -24,6 +24,8 @@
 #include <SGCore/Animation/WhenAnimationEndAction.h>
 #include <SGCore/Motion/IK/IKRootJoint.h>
 #include <SGCore/Motion/IK/IKJoint.h>
+#include <SGCore/Render/DebugDraw.h>
+#include <SGCore/Render/RenderPipelinesManager.h>
 
 SGCore::Coro::Task<> moveSmoothly(SGCore::ECS::entity_t entity, glm::vec3 to, float speed)
 {
@@ -285,9 +287,19 @@ void App::onInit() noexcept
 
     auto roboarm_joint6_05 = roboarmInfo.findEntity(*ecsRegistry, "joint6_05");
     auto& endJoint = ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint6_05);
+    auto endJointTransform = ecsRegistry->get<SGCore::Transform>(roboarm_joint6_05);
 
     endJoint.m_isEndJoint = true;
-    endJoint.m_targetPosition = glm::vec3 { 0.0f, 0.3f, 0.0f };
+
+    endJointTransform->m_ownTransform.m_position += glm::vec3 { 0.0f, -2.0f, 0.0f };
+
+    m_roboarmJoints.push_back(roboarm_rootJoint);
+    m_roboarmJoints.push_back(roboarm_joint1_00);
+    m_roboarmJoints.push_back(roboarm_joint2_01);
+    m_roboarmJoints.push_back(roboarm_joint3_02);
+    m_roboarmJoints.push_back(roboarm_joint4_03);
+    m_roboarmJoints.push_back(roboarm_joint5_04);
+    m_roboarmJoints.push_back(roboarm_joint6_05);
 
     /*auto takeNode = SGCore::MakeRef<SGCore::SkeletalAnimationNode>();
     takeNode->m_animationSpeed = 1.0f;
@@ -335,6 +347,19 @@ void App::onUpdate(double dt, double fixedDt)
         if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_M))
         {
             moveSmoothly(m_characterEntity, characterTransform->m_ownTransform.m_position + characterTransform->m_ownTransform.m_up * 10.0f, 0.01f);
+        }
+    }
+
+    if(currentScene)
+    {
+        const auto ecsRegistry = currentScene->getECSRegistry();
+        const auto debugDraw = SGCore::RenderPipelinesManager::instance().getCurrentRenderPipeline()->getRenderPass<SGCore::DebugDraw>();
+
+        for(auto joint : m_roboarmJoints)
+        {
+            auto jointTransform = ecsRegistry->get<SGCore::Transform>(joint);
+
+            // debugDraw->drawLine(jointTransform->m_finalTransform.m_position, jointTransform->m_finalTransform.m_position + -jointTransform->m_finalTransform.m_right * 0.2f, { 1.0f, 1.0f, 0.0f, 1.0f });
         }
     }
 

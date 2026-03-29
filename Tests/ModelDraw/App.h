@@ -23,5 +23,6 @@ private:
     SGCore::AssetRef<SGCore::Skeleton> m_roboarmSkeleton;
     SGCore::ECS::entity_t m_characterEntity = entt::null;
     SGCore::ECS::entity_t m_roboarmEntity = entt::null;
+    std::vector<SGCore::ECS::entity_t> m_roboarmJoints;
     SGCore::Ref<SGCore::IAnimationNode> m_testIdleNode;
 };
