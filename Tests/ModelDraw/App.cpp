@@ -36,12 +36,12 @@ SGCore::Coro::Task<> moveSmoothly(SGCore::ECS::entity_t entity, glm::vec3 to, fl
 
     auto transform = scene->getECSRegistry()->get<SGCore::Transform>(entity);
 
-    while(glm::distance(transform->m_ownTransform.m_position, to) > 0.5f)
+    while(glm::distance(transform->m_localTransform.m_position, to) > 0.5f)
     {
         co_await 1ms;
 
-        const auto dif = to - transform->m_ownTransform.m_position;
-        transform->m_ownTransform.m_position += dif * speed;
+        const auto dif = to - transform->m_localTransform.m_position;
+        transform->m_localTransform.m_position += dif * speed;
     }
 }
 
@@ -126,7 +126,7 @@ void App::onInit() noexcept
 
             // SGCore::Transform::reg_t& huTaoTransform = SGCore::Scene::getCurrentScene()->getECSRegistry()->get<SGCore::Transform>(entities[0]);
 
-            // huTaoTransform->m_ownTransform.m_scale = { 0.01, 0.01, 0.01 };
+            // huTaoTransform->m_localTransform.m_scale = { 0.01, 0.01, 0.01 };
 
             // sample skeleton
             /*auto idleNode = SGCore::MotionPlannerNode::createNode();
@@ -238,7 +238,7 @@ void App::onInit() noexcept
     const auto cubeRootEntity = cubeEntities[0];
 
     auto cubeTransform = ecsRegistry->get<SGCore::Transform>(cubeRootEntity);
-    cubeTransform->m_ownTransform.m_position = { 10, 0, 0 };
+    cubeTransform->m_localTransform.m_position = { 10, 0, 0 };
 
     auto& cubeMesh = ecsRegistry->get<SGCore::Mesh>(cubeMeshEntity);
     cubeMesh.m_base.setMaterial(cubeTestMaterial);
@@ -258,7 +258,7 @@ void App::onInit() noexcept
     m_roboarmEntity = m_roboarmModel->m_rootNode->addOnScene(scene)[0];
 
     auto roboarmTransform = ecsRegistry->get<SGCore::Transform>(m_roboarmEntity);
-    roboarmTransform->m_ownTransform.m_scale *= 12.0f;
+    roboarmTransform->m_localTransform.m_scale *= 12.0f;
 
     auto& roboarmInfo = ecsRegistry->get<SGCore::EntityBaseInfo>(m_roboarmEntity);
 
@@ -291,7 +291,7 @@ void App::onInit() noexcept
 
     endJoint.m_isEndJoint = true;
 
-    endJointTransform->m_ownTransform.m_position += glm::vec3 { 0.0f, -2.0f, 0.0f };
+    endJointTransform->m_localTransform.m_position += glm::vec3 { -100.0f, -100.0f, -100.0f };
 
     m_roboarmJoints.push_back(roboarm_rootJoint);
     m_roboarmJoints.push_back(roboarm_joint1_00);
@@ -329,24 +329,24 @@ void App::onUpdate(double dt, double fixedDt)
 
         if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_UP))
         {
-            characterTransform->m_ownTransform.m_position += characterTransform->m_finalTransform.m_up * characterSpeed * dt;
+            characterTransform->m_localTransform.m_position += characterTransform->m_worldTransform.m_up * characterSpeed * dt;
         }
         if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_DOWN))
         {
-            characterTransform->m_ownTransform.m_position -= characterTransform->m_finalTransform.m_up * characterSpeed * dt;
+            characterTransform->m_localTransform.m_position -= characterTransform->m_worldTransform.m_up * characterSpeed * dt;
         }
         if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_LEFT))
         {
-            characterTransform->m_ownTransform.m_position -= characterTransform->m_finalTransform.m_right * characterSpeed * dt;
+            characterTransform->m_localTransform.m_position -= characterTransform->m_worldTransform.m_right * characterSpeed * dt;
         }
         if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_RIGHT))
         {
-            characterTransform->m_ownTransform.m_position += characterTransform->m_finalTransform.m_right * characterSpeed * dt;
+            characterTransform->m_localTransform.m_position += characterTransform->m_worldTransform.m_right * characterSpeed * dt;
         }
 
         if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_M))
         {
-            moveSmoothly(m_characterEntity, characterTransform->m_ownTransform.m_position + characterTransform->m_ownTransform.m_up * 10.0f, 0.01f);
+            moveSmoothly(m_characterEntity, characterTransform->m_localTransform.m_position + characterTransform->m_localTransform.m_up * 10.0f, 0.01f);
         }
     }
 
@@ -359,7 +359,7 @@ void App::onUpdate(double dt, double fixedDt)
         {
             auto jointTransform = ecsRegistry->get<SGCore::Transform>(joint);
 
-            // debugDraw->drawLine(jointTransform->m_finalTransform.m_position, jointTransform->m_finalTransform.m_position + -jointTransform->m_finalTransform.m_right * 0.2f, { 1.0f, 1.0f, 0.0f, 1.0f });
+            // debugDraw->drawLine(jointTransform->m_worldTransform.m_position, jointTransform->m_worldTransform.m_position + -jointTransform->m_worldTransform.m_right * 0.2f, { 1.0f, 1.0f, 0.0f, 1.0f });
         }
     }
 

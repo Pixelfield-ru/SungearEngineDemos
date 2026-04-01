@@ -47,9 +47,9 @@ void App::rebuildNavMesh(const std::vector<SGCore::ECS::entity_t>& meshedEntitie
             const auto& v2 = mesh->m_base.getMeshData()->m_vertices[mesh->m_base.getMeshData()->m_indices[i + 2]];
 
             SGCore::MathPrimitivesUtils::Triangle<> tri;
-            tri.m_vertices[0] = transform->m_finalTransform.m_animatedModelMatrix * glm::vec4(v0.m_position, 1.0f);
-            tri.m_vertices[1] = transform->m_finalTransform.m_animatedModelMatrix * glm::vec4(v1.m_position, 1.0f);
-            tri.m_vertices[2] = transform->m_finalTransform.m_animatedModelMatrix * glm::vec4(v2.m_position, 1.0f);
+            tri.m_vertices[0] = transform->m_worldTransform.m_animatedModelMatrix * glm::vec4(v0.m_position, 1.0f);
+            tri.m_vertices[1] = transform->m_worldTransform.m_animatedModelMatrix * glm::vec4(v1.m_position, 1.0f);
+            tri.m_vertices[2] = transform->m_worldTransform.m_animatedModelMatrix * glm::vec4(v2.m_position, 1.0f);
 
             tri.calculateNormal();
 
@@ -87,8 +87,8 @@ void App::onInit() noexcept
     m_floorModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/Navigation/Resources/floor_2/scene.gltf");
     auto floorEntities = m_floorModel->m_rootNode->addOnScene(SGCore::Scene::getCurrentScene());
     auto floorTransform = ecsRegistry->get<SGCore::Transform>(floorEntities[0]);
-    floorTransform->m_ownTransform.m_position.y += 150.0f;
-    floorTransform->m_ownTransform.m_scale *= 0.1f;
+    floorTransform->m_localTransform.m_position.y += 150.0f;
+    floorTransform->m_localTransform.m_scale *= 0.1f;
 
     m_cubeModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/Navigation/Resources/location_1/ai_test.gltf");
     const auto cubeEntities = m_cubeModel->m_rootNode->addOnScene(SGCore::Scene::getCurrentScene());

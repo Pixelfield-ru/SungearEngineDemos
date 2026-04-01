@@ -59,15 +59,15 @@ void App::onInit() noexcept
     addShape(cubeEntity0Rigidbody, 0.0f, { 500.0f, 1.0f, 500.0f }, SGCore::PhysicalObjectType::OT_STATIC);
     addShape(cubeEntity1Rigidbody, 10.0f, { 1.0f, 1.0f, 1.0f }, SGCore::PhysicalObjectType::OT_DYNAMIC);
 
-    cubeEntity0Transform->m_ownTransform.m_scale = { 1000.0f, 1.0f, 1000.0f};
-    cubeEntity1Transform->m_ownTransform.m_scale = { 1.0f, 1.0f, 1.0f };
-    cubeEntity1Transform->m_ownTransform.m_position.y += 10.0f;
+    cubeEntity0Transform->m_localTransform.m_scale = { 1000.0f, 1.0f, 1000.0f};
+    cubeEntity1Transform->m_localTransform.m_scale = { 1.0f, 1.0f, 1.0f };
+    cubeEntity1Transform->m_localTransform.m_position.y += 10.0f;
 
     ecsRegistry->get<SGCore::EntityBaseInfo>(getCameraEntity()).setParent(m_playerEntity, *ecsRegistry);
     auto cameraTransform = ecsRegistry->get<SGCore::Transform>(getCameraEntity());
-    cameraTransform->m_ownTransform.m_position = { 0.0f, 5.0f, 10.0f };
-    cameraTransform->m_ownTransform.m_rotation *= glm::quat({ glm::radians(-20.0f), glm::radians(0.0f), glm::radians(0.0f) });
-    // cameraTransform->m_ownTransform.m_yawPitchRoll = { -20.0f, 0.0f, 0.0f };
+    cameraTransform->m_localTransform.m_position = { 0.0f, 5.0f, 10.0f };
+    cameraTransform->m_localTransform.m_rotation *= glm::quat({ glm::radians(-20.0f), glm::radians(0.0f), glm::radians(0.0f) });
+    // cameraTransform->m_localTransform.m_yawPitchRoll = { -20.0f, 0.0f, 0.0f };
 
     // =================================================================
 }
@@ -85,25 +85,25 @@ void App::onUpdate(double dt, double fixedDt)
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_W))
     {
-        playerTransform->m_ownTransform.m_position += playerTransform->m_finalTransform.m_forward * m_playerSpeed * dt;
+        playerTransform->m_localTransform.m_position += playerTransform->m_worldTransform.m_forward * m_playerSpeed * dt;
     }
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_A))
     {
-        playerTransform->m_ownTransform.m_position += playerTransform->m_finalTransform.m_right * m_playerSpeed * dt;
+        playerTransform->m_localTransform.m_position += playerTransform->m_worldTransform.m_right * m_playerSpeed * dt;
     }
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_D))
     {
-        playerTransform->m_ownTransform.m_position -= playerTransform->m_finalTransform.m_right * m_playerSpeed * dt;
+        playerTransform->m_localTransform.m_position -= playerTransform->m_worldTransform.m_right * m_playerSpeed * dt;
     }
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_S))
     {
-        playerTransform->m_ownTransform.m_position -= playerTransform->m_finalTransform.m_forward * m_playerSpeed * dt;
+        playerTransform->m_localTransform.m_position -= playerTransform->m_worldTransform.m_forward * m_playerSpeed * dt;
     }
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_R))
     {
-        playerTransform->m_ownTransform.m_position = { 0.0f, 10.0f, 0.0f };
-        playerTransform->m_ownTransform.m_rotation = glm::identity<glm::quat>();
+        playerTransform->m_localTransform.m_position = { 0.0f, 10.0f, 0.0f };
+        playerTransform->m_localTransform.m_rotation = glm::identity<glm::quat>();
     }
 
     if(SGCore::Input::PC::keyboardKeyPressed(SGCore::Input::KeyboardKey::KEY_SPACE))
@@ -128,8 +128,8 @@ void App::onUpdate(double dt, double fixedDt)
         0.0f
     };
 
-    playerTransform->m_ownTransform.m_rotation *= glm::quat(playerRotation);
-    cameraTransform->m_ownTransform.m_rotation *= glm::quat(cameraRotation);
+    playerTransform->m_localTransform.m_rotation *= glm::quat(playerRotation);
+    cameraTransform->m_localTransform.m_rotation *= glm::quat(cameraRotation);
 }
 
 void App::onFixedUpdate(double dt, double fixedDt)

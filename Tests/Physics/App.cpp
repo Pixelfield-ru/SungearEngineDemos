@@ -50,7 +50,7 @@ void App::createBallAndApplyImpulse(const glm::vec3& spherePos, const glm::vec3&
     sphereRigidbody3D->m_body->applyCentralImpulse({ finalImpulse.x, finalImpulse.y, finalImpulse.z });
 
     SGCore::Ref<SGCore::Transform>& sphereTransform = ecsRegistry->get<SGCore::Transform>(sphereEntities[0]);
-    sphereTransform->m_ownTransform.m_position = spherePos;
+    sphereTransform->m_localTransform.m_position = spherePos;
 }
 
 void App::onInit() noexcept
@@ -90,8 +90,8 @@ void App::onInit() noexcept
 
     auto playerTransform = ecsRegistry->get<SGCore::Transform>(m_playerEntity);
 
-    playerTransform->m_ownTransform.m_position = { 300, 10.0f, 0.0f };
-    playerTransform->m_ownTransform.m_scale = { 1.0f, 1.8f, 1.0f };
+    playerTransform->m_localTransform.m_position = { 300, 10.0f, 0.0f };
+    playerTransform->m_localTransform.m_scale = { 1.0f, 1.8f, 1.0f };
 
     auto playerRigidbody3D = ecsRegistry->emplace<SGCore::Rigidbody3D>(m_playerEntity, SGCore::MakeRef<SGCore::Rigidbody3D>(physicsWorld));
 
@@ -104,8 +104,8 @@ void App::onInit() noexcept
 
     auto floorTransform = ecsRegistry->get<SGCore::Transform>(m_floorEntity);
 
-    floorTransform->m_ownTransform.m_scale = { 250.0f, 1.0f, 250.0f };
-    floorTransform->m_ownTransform.m_position = { 0, -50, 0 };
+    floorTransform->m_localTransform.m_scale = { 250.0f, 1.0f, 250.0f };
+    floorTransform->m_localTransform.m_position = { 0, -50, 0 };
 
     auto floorRigidbody3D = ecsRegistry->emplace<SGCore::Rigidbody3D>(m_floorEntity, SGCore::MakeRef<SGCore::Rigidbody3D>(physicsWorld));
 
@@ -131,9 +131,9 @@ void App::onInit() noexcept
 
     motionPlanner.m_skeleton = m_humanSkeleton;
 
-    humanTransform->m_ownTransform.m_scale *= 0.1f;
-    // humanTransform->m_ownTransform.m_position.y = -25.0f;
-    humanTransform->m_ownTransform.m_position.y = 50.0f;
+    humanTransform->m_localTransform.m_scale *= 0.1f;
+    // humanTransform->m_localTransform.m_position.y = -25.0f;
+    humanTransform->m_localTransform.m_position.y = 50.0f;
 
     const auto& humanBones = m_humanSkeleton->getAllBones();
 
@@ -184,14 +184,14 @@ void App::onInit() noexcept
     auto sphere2Transform =  ecsRegistry->get<SGCore::Transform>(m_sphere2Entity);
 
 
-    sphere0Transform->m_ownTransform.m_position.y += 20.0f;
+    sphere0Transform->m_localTransform.m_position.y += 20.0f;
 
-    sphere1Transform->m_ownTransform.m_scale *= 2.0f;
-    sphere1Transform->m_ownTransform.m_position.x = 20.0f;
+    sphere1Transform->m_localTransform.m_scale *= 2.0f;
+    sphere1Transform->m_localTransform.m_position.x = 20.0f;
 
-    sphere2Transform->m_ownTransform.m_scale *= 2.0f;
-    sphere2Transform->m_ownTransform.m_position.x = -20.0f;
-    sphere2Transform->m_ownTransform.m_position.z = -20.0f;
+    sphere2Transform->m_localTransform.m_scale *= 2.0f;
+    sphere2Transform->m_localTransform.m_position.x = -20.0f;
+    sphere2Transform->m_localTransform.m_position.z = -20.0f;
 
     const auto sphere0Rigidbody = createRigidbody(m_sphere0Entity);
     const auto sphere1Rigidbody = createRigidbody(m_sphere1Entity);
@@ -268,13 +268,13 @@ void App::onUpdate(double dt, double fixedDt) noexcept
     auto sphere1Rigidbody = ecsRegistry->get<SGCore::Rigidbody3D>(m_sphere1Entity);
     auto sphere1Transform = ecsRegistry->get<SGCore::Transform>(m_sphere1Entity);
 
-    // std::println(std::cout, "sphere1Transform pos: {}", glm::to_string(sphere1Transform->m_finalTransform.m_position));
+    // std::println(std::cout, "sphere1Transform pos: {}", glm::to_string(sphere1Transform->m_worldTransform.m_position));
 
     auto& cameraTransform = ecsRegistry->get<SGCore::Transform>(getCameraEntity());
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_1))
     {
-        createBallAndApplyImpulse(cameraTransform->m_finalTransform.m_position, cameraTransform->m_finalTransform.m_forward * 200000.0f / 10.0f);
+        createBallAndApplyImpulse(cameraTransform->m_worldTransform.m_position, cameraTransform->m_worldTransform.m_forward * 200000.0f / 10.0f);
     }
 
     if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_M))
@@ -310,14 +310,14 @@ void App::onUpdate(double dt, double fixedDt) noexcept
 
         rigidbodyTransform.setRotation({ rotated.x, rotated.y, rotated.z, rotated.w });*/
 
-        const auto impulseDir = cameraTransform->m_ownTransform.m_forward * 2000.0f / 10.0f;
+        const auto impulseDir = cameraTransform->m_localTransform.m_forward * 2000.0f / 10.0f;
 
         sphere0Rigidbody->m_body->applyCentralImpulse({ impulseDir.x, impulseDir.y, impulseDir.z });
     }
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_4))
     {
-        sphere0Transform->m_ownTransform.m_position += glm::vec3 { 1.0f };
+        sphere0Transform->m_localTransform.m_position += glm::vec3 { 1.0f };
 
         /*auto& rigidbodyTransform = sphere0Rigidbody->m_body->getWorldTransform();
 
@@ -335,7 +335,7 @@ void App::onUpdate(double dt, double fixedDt) noexcept
                           glm::radians(1.0f),
                           glm::radians(1.0f));
 
-        sphere0Transform->m_ownTransform.m_rotation = glm::quat(eulerAngles) * sphere0Transform->m_ownTransform.m_rotation;
+        sphere0Transform->m_localTransform.m_rotation = glm::quat(eulerAngles) * sphere0Transform->m_localTransform.m_rotation;
 
 
         // rigidbodyTransform.setRotation({ rotated.x, rotated.y, rotated.z, rotated.w });
@@ -372,7 +372,7 @@ void App::onUpdate(double dt, double fixedDt) noexcept
                           glm::radians(1.0f),
                           glm::radians(1.0f));
 
-    humanTransform->m_ownTransform.m_rotation = glm::quat(eulerAngles) * humanTransform->m_ownTransform.m_rotation;*/
+    humanTransform->m_localTransform.m_rotation = glm::quat(eulerAngles) * humanTransform->m_localTransform.m_rotation;*/
 }
 
 void App::onFixedUpdate(double dt, double fixedDt) noexcept
