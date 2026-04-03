@@ -26,6 +26,8 @@
 #include <SGCore/Motion/IK/IKJoint.h>
 #include <SGCore/Render/DebugDraw.h>
 #include <SGCore/Render/RenderPipelinesManager.h>
+#include <SGCore/Transformations/TransformUtils.h>
+#include <SGCore/Render/RenderingBase.h>
 
 SGCore::Coro::Task<> moveSmoothly(SGCore::ECS::entity_t entity, glm::vec3 to, float speed)
 {
@@ -286,12 +288,15 @@ void App::onInit() noexcept
     ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint5_04);
 
     auto roboarm_joint6_05 = roboarmInfo.findEntity(*ecsRegistry, "joint6_05");
-    auto& endJoint = ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint6_05);
+    /*auto& endJoint = ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint6_05);
     auto endJointTransform = ecsRegistry->get<SGCore::Transform>(roboarm_joint6_05);
 
     endJoint.m_isEndJoint = true;
+    endJoint.m_targetPosition = m_ikTargetPosition;
 
-    endJointTransform->m_localTransform.m_position += glm::vec3 { -100.0f, -100.0f, -100.0f };
+    m_roboarmTargetJoint = &endJoint;*/
+
+    // endJointTransform->m_localTransform.m_position += glm::vec3 { -100.0f, -100.0f, -100.0f };
 
     m_roboarmJoints.push_back(roboarm_rootJoint);
     m_roboarmJoints.push_back(roboarm_joint1_00);
@@ -300,6 +305,15 @@ void App::onInit() noexcept
     m_roboarmJoints.push_back(roboarm_joint4_03);
     m_roboarmJoints.push_back(roboarm_joint5_04);
     m_roboarmJoints.push_back(roboarm_joint6_05);
+
+    auto Braccio_lambert1_0 = roboarmInfo.findEntity(*ecsRegistry, "Braccio_lambert1_0");
+    ecsRegistry->get<SGCore::Transform>(Braccio_lambert1_0)->m_localTransform.m_rotation = glm::identity<glm::quat>();
+
+    auto Avanbraccio_lambert1_0 = roboarmInfo.findEntity(*ecsRegistry, "Avanbraccio_lambert1_0");
+    ecsRegistry->get<SGCore::Transform>(Avanbraccio_lambert1_0)->m_localTransform.m_rotation = glm::identity<glm::quat>();
+
+    auto Mano_lambert1_0 = roboarmInfo.findEntity(*ecsRegistry, "Mano_lambert1_0");
+    ecsRegistry->get<SGCore::Transform>(Mano_lambert1_0)->m_localTransform.m_rotation = glm::identity<glm::quat>();
 
     /*auto takeNode = SGCore::MakeRef<SGCore::SkeletalAnimationNode>();
     takeNode->m_animationSpeed = 1.0f;
@@ -355,12 +369,34 @@ void App::onUpdate(double dt, double fixedDt)
         const auto ecsRegistry = currentScene->getECSRegistry();
         const auto debugDraw = SGCore::RenderPipelinesManager::instance().getCurrentRenderPipeline()->getRenderPass<SGCore::DebugDraw>();
 
+        auto& cameraRenderingBase = ecsRegistry->get<SGCore::RenderingBase>(getCameraEntity());
+
         for(auto joint : m_roboarmJoints)
         {
             auto jointTransform = ecsRegistry->get<SGCore::Transform>(joint);
 
-            // debugDraw->drawLine(jointTransform->m_worldTransform.m_position, jointTransform->m_worldTransform.m_position + -jointTransform->m_worldTransform.m_right * 0.2f, { 1.0f, 1.0f, 0.0f, 1.0f });
+            debugDraw->drawLine(jointTransform->m_worldTransform.m_position, jointTransform->m_worldTransform.m_position + -jointTransform->m_worldTransform.m_right * 0.1f, { 1.0f, 1.0f, 0.0f, 1.0f });
         }
+
+        if(SGCore::Input::PC::mouseButtonDown(SGCore::Input::MouseButton::MOUSE_BUTTON_LEFT))
+        {
+            std::cout << "mouse down!!" << std::endl;
+
+            const auto cursorX = SGCore::Input::PC::getCursorPositionX();
+            const auto cursorY = SGCore::Input::PC::getCursorPositionY();
+
+            std::int32_t screenWidth {};
+            std::int32_t screenHeight {};
+
+            SGCore::CoreMain::getWindow().getSize(screenWidth, screenHeight);
+
+            m_ikTargetPosition = SGCore::TransformUtils::screenToWorld({ cursorX, cursorY },
+                                                                       { screenWidth, screenHeight },
+                                                                       cameraRenderingBase->m_projectionMatrix,
+                                                                       cameraRenderingBase->m_viewMatrix);
+        }
+
+        debugDraw->drawLine(m_ikTargetPosition, m_ikTargetPosition + glm::vec3 { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f });
     }
 
     if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_2))
@@ -401,10 +437,7 @@ void App::onUpdate(double dt, double fixedDt)
         m_testIdleNode->m_animationSpeed += 0.1f;
     }
 
-    if(SGCore::Input::PC::mouseButtonPressed(SGCore::Input::MouseButton::MOUSE_BUTTON_LEFT))
-    {
-
-    }
+    // m_roboarmTargetJoint->m_targetPosition = m_ikTargetPosition;
 }
 
 void App::onFixedUpdate(double dt, double fixedDt)
