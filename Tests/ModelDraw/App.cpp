@@ -269,14 +269,15 @@ void App::onInit() noexcept
 
     auto& animationsTree = SGCore::Scene::getCurrentScene()->getECSRegistry()->emplace<SGCore::AnimationsTree>(m_roboarmEntity);
 
-    auto roboarm_rootJoint = roboarmInfo.findEntity(*ecsRegistry, "_rootJoint");
-    ecsRegistry->emplace<SGCore::IKRootJoint>(roboarm_rootJoint);
+    /*auto roboarm_rootJoint = roboarmInfo.findEntity(*ecsRegistry, "_rootJoint");
+    ecsRegistry->emplace<SGCore::IKRootJoint>(roboarm_rootJoint);*/
 
     auto roboarm_joint1_00 = roboarmInfo.findEntity(*ecsRegistry, "joint1_00");
-    ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint1_00);
+    ecsRegistry->emplace<SGCore::IKRootJoint>(roboarm_joint1_00);
 
     auto roboarm_joint2_01 = roboarmInfo.findEntity(*ecsRegistry, "joint2_01");
     ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint2_01);
+    ecsRegistry->get<SGCore::Transform>(roboarm_joint2_01)->m_localTransform.m_rotation = glm::angleAxis(glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 
     auto roboarm_joint3_02 = roboarmInfo.findEntity(*ecsRegistry, "joint3_02");
     ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint3_02);
@@ -288,17 +289,17 @@ void App::onInit() noexcept
     ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint5_04);
 
     auto roboarm_joint6_05 = roboarmInfo.findEntity(*ecsRegistry, "joint6_05");
-    /*auto& endJoint = ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint6_05);
+    auto& endJoint = ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint6_05);
     auto endJointTransform = ecsRegistry->get<SGCore::Transform>(roboarm_joint6_05);
 
     endJoint.m_isEndJoint = true;
     endJoint.m_targetPosition = m_ikTargetPosition;
 
-    m_roboarmTargetJoint = &endJoint;*/
+    m_roboarmTargetJoint = &endJoint;
 
     // endJointTransform->m_localTransform.m_position += glm::vec3 { -100.0f, -100.0f, -100.0f };
 
-    m_roboarmJoints.push_back(roboarm_rootJoint);
+    // m_roboarmJoints.push_back(roboarm_rootJoint);
     m_roboarmJoints.push_back(roboarm_joint1_00);
     m_roboarmJoints.push_back(roboarm_joint2_01);
     m_roboarmJoints.push_back(roboarm_joint3_02);
@@ -314,6 +315,10 @@ void App::onInit() noexcept
 
     auto Mano_lambert1_0 = roboarmInfo.findEntity(*ecsRegistry, "Mano_lambert1_0");
     ecsRegistry->get<SGCore::Transform>(Mano_lambert1_0)->m_localTransform.m_rotation = glm::identity<glm::quat>();
+
+    /*auto Mano = roboarmInfo.findEntity(*ecsRegistry, "Mano");
+    ecsRegistry->get<SGCore::Transform>(Mano)->m_localTransform.m_rotation = glm::identity<glm::quat>();
+    ecsRegistry->get<SGCore::EntityBaseInfo>(Mano).setParent(roboarm_joint6_05, *ecsRegistry);*/
 
     /*auto takeNode = SGCore::MakeRef<SGCore::SkeletalAnimationNode>();
     takeNode->m_animationSpeed = 1.0f;
@@ -437,7 +442,7 @@ void App::onUpdate(double dt, double fixedDt)
         m_testIdleNode->m_animationSpeed += 0.1f;
     }
 
-    // m_roboarmTargetJoint->m_targetPosition = m_ikTargetPosition;
+    m_roboarmTargetJoint->m_targetPosition = m_ikTargetPosition;
 }
 
 void App::onFixedUpdate(double dt, double fixedDt)
