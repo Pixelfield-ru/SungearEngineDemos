@@ -257,64 +257,68 @@ void App::onInit() noexcept
         std::cout << "Failed to load roboarm animations" << std::endl;
     }
 
-    m_roboarmEntity = m_roboarmModel->m_rootNode->addOnScene(scene)[0];
+    auto cubeModelMesh = cubeModel->m_rootNode->findMesh("cube");
 
-    auto roboarmTransform = ecsRegistry->get<SGCore::Transform>(m_roboarmEntity);
-    roboarmTransform->m_localTransform.m_scale *= 12.0f;
+    // first joint ================
 
-    auto& roboarmInfo = ecsRegistry->get<SGCore::EntityBaseInfo>(m_roboarmEntity);
+    m_roboarmEntity = ecsRegistry->create();
 
-    auto& roboarmMotionPlanner = ecsRegistry->emplace<SGCore::MotionPlanner>(m_roboarmEntity);
-    // roboarmMotionPlanner.m_skeleton = m_roboarmSkeleton;
+    auto& joint0 = ecsRegistry->emplace<SGCore::IKRootJoint>(m_roboarmEntity);
+    auto& join0Transform = ecsRegistry->emplace<SGCore::Transform>(m_roboarmEntity, SGCore::MakeRef<SGCore::Transform>());
+    join0Transform->m_localTransform.m_scale = { 0.1f, 1.0f, 0.1f };
+    join0Transform->m_localTransform.m_position = {  -2.0f, 0.0f, 0.0f };
 
-    auto& animationsTree = SGCore::Scene::getCurrentScene()->getECSRegistry()->emplace<SGCore::AnimationsTree>(m_roboarmEntity);
+    auto joint0Mesh = cubeModelMesh->addOnScene(scene);
+    ecsRegistry->get<SGCore::EntityBaseInfo>(joint0Mesh).setParent(m_roboarmEntity, *ecsRegistry);
+    auto joint0MeshTransform = ecsRegistry->get<SGCore::Transform>(joint0Mesh);
+    joint0MeshTransform->m_localTransform.m_position = { 0.0f, 1.0f, 0.0f };
 
-    /*auto roboarm_rootJoint = roboarmInfo.findEntity(*ecsRegistry, "_rootJoint");
-    ecsRegistry->emplace<SGCore::IKRootJoint>(roboarm_rootJoint);*/
+    // =============================
 
-    auto roboarm_joint1_00 = roboarmInfo.findEntity(*ecsRegistry, "joint1_00");
-    ecsRegistry->emplace<SGCore::IKRootJoint>(roboarm_joint1_00);
+    // second joint ================
 
-    auto roboarm_joint2_01 = roboarmInfo.findEntity(*ecsRegistry, "joint2_01");
-    ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint2_01);
-    ecsRegistry->get<SGCore::Transform>(roboarm_joint2_01)->m_localTransform.m_rotation = glm::angleAxis(glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    auto joint1Entity = ecsRegistry->create();
 
-    auto roboarm_joint3_02 = roboarmInfo.findEntity(*ecsRegistry, "joint3_02");
-    ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint3_02);
+    auto& joint1 = ecsRegistry->emplace<SGCore::IKJoint>(joint1Entity);
+    ecsRegistry->get<SGCore::EntityBaseInfo>(joint1Entity).setParent(m_roboarmEntity, *ecsRegistry);
+    auto& joint1Transform = ecsRegistry->emplace<SGCore::Transform>(joint1Entity, SGCore::MakeRef<SGCore::Transform>());
+    joint1Transform->m_localTransform.m_position = {  0.0f, 2.0f, 0.0f };
 
-    auto roboarm_joint4_03 = roboarmInfo.findEntity(*ecsRegistry, "joint4_03");
-    ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint4_03);
+    auto join1Mesh = cubeModelMesh->addOnScene(scene);
+    ecsRegistry->get<SGCore::EntityBaseInfo>(join1Mesh).setParent(joint1Entity, *ecsRegistry);
+    auto joint1MeshTransform = ecsRegistry->get<SGCore::Transform>(join1Mesh);
+    joint1MeshTransform->m_localTransform.m_position = { 0.0f, 1.0f, 0.0f};
 
-    auto roboarm_joint5_04 = roboarmInfo.findEntity(*ecsRegistry, "joint5_04");
-    ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint5_04);
+    // =============================
 
-    auto roboarm_joint6_05 = roboarmInfo.findEntity(*ecsRegistry, "joint6_05");
-    auto& endJoint = ecsRegistry->emplace<SGCore::IKJoint>(roboarm_joint6_05);
-    auto endJointTransform = ecsRegistry->get<SGCore::Transform>(roboarm_joint6_05);
+    // third joint ================
 
-    endJoint.m_isEndJoint = true;
-    endJoint.m_targetPosition = m_ikTargetPosition;
+    auto joint2Entity = ecsRegistry->create();
 
-    m_roboarmTargetJoint = &endJoint;
+    auto& joint2 = ecsRegistry->emplace<SGCore::IKJoint>(joint2Entity);
+    ecsRegistry->get<SGCore::EntityBaseInfo>(joint2Entity).setParent(joint1Entity, *ecsRegistry);
+    auto& joint2Transform = ecsRegistry->emplace<SGCore::Transform>(joint2Entity, SGCore::MakeRef<SGCore::Transform>());
+    joint2Transform->m_localTransform.m_position = {  0.0f, 2.0f, 0.0f };
+
+    auto join2Mesh = cubeModelMesh->addOnScene(scene);
+    ecsRegistry->get<SGCore::EntityBaseInfo>(join2Mesh).setParent(joint2Entity, *ecsRegistry);
+    auto joint2MeshTransform = ecsRegistry->get<SGCore::Transform>(join2Mesh);
+    joint2MeshTransform->m_localTransform.m_position = { 0.0f, 1.0f, 0.0f};
+
+    // =============================
+
+
+    joint2.m_isEndJoint = true;
+    joint2.m_targetPosition = m_ikTargetPosition;
+
+    m_roboarmTargetJoint = &joint2;
 
     // endJointTransform->m_localTransform.m_position += glm::vec3 { -100.0f, -100.0f, -100.0f };
 
     // m_roboarmJoints.push_back(roboarm_rootJoint);
-    m_roboarmJoints.push_back(roboarm_joint1_00);
-    m_roboarmJoints.push_back(roboarm_joint2_01);
-    m_roboarmJoints.push_back(roboarm_joint3_02);
-    m_roboarmJoints.push_back(roboarm_joint4_03);
-    m_roboarmJoints.push_back(roboarm_joint5_04);
-    m_roboarmJoints.push_back(roboarm_joint6_05);
-
-    auto Braccio_lambert1_0 = roboarmInfo.findEntity(*ecsRegistry, "Braccio_lambert1_0");
-    ecsRegistry->get<SGCore::Transform>(Braccio_lambert1_0)->m_localTransform.m_rotation = glm::identity<glm::quat>();
-
-    auto Avanbraccio_lambert1_0 = roboarmInfo.findEntity(*ecsRegistry, "Avanbraccio_lambert1_0");
-    ecsRegistry->get<SGCore::Transform>(Avanbraccio_lambert1_0)->m_localTransform.m_rotation = glm::identity<glm::quat>();
-
-    auto Mano_lambert1_0 = roboarmInfo.findEntity(*ecsRegistry, "Mano_lambert1_0");
-    ecsRegistry->get<SGCore::Transform>(Mano_lambert1_0)->m_localTransform.m_rotation = glm::identity<glm::quat>();
+    m_roboarmJoints.push_back(m_roboarmEntity);
+    m_roboarmJoints.push_back(joint1Entity);
+    m_roboarmJoints.push_back(joint2Entity);
 
     /*auto Mano = roboarmInfo.findEntity(*ecsRegistry, "Mano");
     ecsRegistry->get<SGCore::Transform>(Mano)->m_localTransform.m_rotation = glm::identity<glm::quat>();
@@ -380,7 +384,7 @@ void App::onUpdate(double dt, double fixedDt)
         {
             auto jointTransform = ecsRegistry->get<SGCore::Transform>(joint);
 
-            debugDraw->drawLine(jointTransform->m_worldTransform.m_position, jointTransform->m_worldTransform.m_position + -jointTransform->m_worldTransform.m_right * 0.1f, { 1.0f, 1.0f, 0.0f, 1.0f });
+            debugDraw->drawLine(jointTransform->m_worldTransform.m_position, jointTransform->m_worldTransform.m_position + -jointTransform->m_worldTransform.m_right * 0.5f, { 1.0f, 1.0f, 0.0f, 1.0f });
         }
 
         if(SGCore::Input::PC::mouseButtonDown(SGCore::Input::MouseButton::MOUSE_BUTTON_LEFT))
