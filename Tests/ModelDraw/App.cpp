@@ -287,8 +287,10 @@ void App::onInit() noexcept
     auto& joint1Transform = ecsRegistry->emplace<SGCore::Transform>(joint1Entity, SGCore::MakeRef<SGCore::Transform>());
     joint1Transform->m_localTransform.m_position = {  0.0f, 2.0f, 0.0f };
     joint1.m_useRotationConstraints = true;
-    joint1.m_maxRotation = { 50.0f, 360.0f, 50.0f };
-    joint1.m_minRotation = { -50.0f, -360.0f, -50.0f };
+    joint1.m_constraintAxis = SGCore::MathUtils::up3;
+    joint1.m_constraintMaxAngle = 50.0f;
+    /*joint1.m_maxRotation = { 50.0f, 360.0f, 50.0f };
+    joint1.m_minRotation = { -50.0f, -360.0f, -50.0f };*/
 
     auto join1Mesh = cubeModelMesh->addOnScene(scene);
     ecsRegistry->get<SGCore::EntityBaseInfo>(join1Mesh).setParent(joint1Entity, *ecsRegistry);
@@ -306,9 +308,9 @@ void App::onInit() noexcept
     ecsRegistry->get<SGCore::EntityBaseInfo>(joint2Entity).setParent(joint1Entity, *ecsRegistry);
     auto& joint2Transform = ecsRegistry->emplace<SGCore::Transform>(joint2Entity, SGCore::MakeRef<SGCore::Transform>());
     joint2Transform->m_localTransform.m_position = {  0.0f, 2.0f, 0.0f };
-    joint2.m_useRotationConstraints = true;
+    /*joint2.m_useRotationConstraints = true;
     joint2.m_maxRotation = { 50.0f, 360.0f, 50.0f };
-    joint2.m_minRotation = { -50.0f, -360.0f, -50.0f };
+    joint2.m_minRotation = { -50.0f, -360.0f, -50.0f };*/
 
     auto join2Mesh = cubeModelMesh->addOnScene(scene);
     ecsRegistry->get<SGCore::EntityBaseInfo>(join2Mesh).setParent(joint2Entity, *ecsRegistry);
