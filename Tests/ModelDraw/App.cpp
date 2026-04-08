@@ -287,10 +287,10 @@ void App::onInit() noexcept
     auto& joint1Transform = ecsRegistry->emplace<SGCore::Transform>(joint1Entity, SGCore::MakeRef<SGCore::Transform>());
     joint1Transform->m_localTransform.m_position = {  0.0f, 2.0f, 0.0f };
     joint1.m_useRotationConstraints = true;
-    joint1.m_constraintAxis = SGCore::MathUtils::up3;
+    joint1.m_constraintAxis = SGCore::MathUtils::right3;
     joint1.m_constraintMaxAngle = 50.0f;
-    /*joint1.m_maxRotation = { 50.0f, 360.0f, 50.0f };
-    joint1.m_minRotation = { -50.0f, -360.0f, -50.0f };*/
+    // joint1.m_constraintMaxRotation = { 30.0f, 360.0f, 30.0f };
+    // joint1.m_constraintMinRotation = { -30.0f, -360.0f, -30.0f };
 
     auto join1Mesh = cubeModelMesh->addOnScene(scene);
     ecsRegistry->get<SGCore::EntityBaseInfo>(join1Mesh).setParent(joint1Entity, *ecsRegistry);
@@ -312,15 +312,15 @@ void App::onInit() noexcept
     joint2.m_maxRotation = { 50.0f, 360.0f, 50.0f };
     joint2.m_minRotation = { -50.0f, -360.0f, -50.0f };*/
 
-    auto join2Mesh = cubeModelMesh->addOnScene(scene);
-    ecsRegistry->get<SGCore::EntityBaseInfo>(join2Mesh).setParent(joint2Entity, *ecsRegistry);
-    auto joint2MeshTransform = ecsRegistry->get<SGCore::Transform>(join2Mesh);
+    auto joint2Mesh = cubeModelMesh->addOnScene(scene);
+    ecsRegistry->get<SGCore::EntityBaseInfo>(joint2Mesh).setParent(joint2Entity, *ecsRegistry);
+    auto joint2MeshTransform = ecsRegistry->get<SGCore::Transform>(joint2Mesh);
     joint2MeshTransform->m_localTransform.m_position = { 0.0f, -1.0f, 0.0f};
     joint2MeshTransform->m_localTransform.m_scale = { 0.1f, 1.0f, 0.1f };
 
     // =============================
 
-    // fourth (end0 joint ================
+    // fourth joint ================
 
     auto joint3Entity = ecsRegistry->create();
 
@@ -328,14 +328,34 @@ void App::onInit() noexcept
     ecsRegistry->get<SGCore::EntityBaseInfo>(joint3Entity).setParent(joint2Entity, *ecsRegistry);
     auto& joint3Transform = ecsRegistry->emplace<SGCore::Transform>(joint3Entity, SGCore::MakeRef<SGCore::Transform>());
     joint3Transform->m_localTransform.m_position = {  0.0f, 2.0f, 0.0f };
+    /*joint2.m_useRotationConstraints = true;
+    joint2.m_maxRotation = { 50.0f, 360.0f, 50.0f };
+    joint2.m_minRotation = { -50.0f, -360.0f, -50.0f };*/
+
+    auto joint3Mesh = cubeModelMesh->addOnScene(scene);
+    ecsRegistry->get<SGCore::EntityBaseInfo>(joint3Mesh).setParent(joint3Entity, *ecsRegistry);
+    auto joint3MeshTransform = ecsRegistry->get<SGCore::Transform>(joint3Mesh);
+    joint3MeshTransform->m_localTransform.m_position = { 0.0f, -1.0f, 0.0f};
+    joint3MeshTransform->m_localTransform.m_scale = { 0.1f, 1.0f, 0.1f };
+
+    // =============================
+
+    // fourth (end0 joint ================
+
+    auto joint4Entity = ecsRegistry->create();
+
+    auto& joint4 = ecsRegistry->emplace<SGCore::IKJoint>(joint4Entity);
+    ecsRegistry->get<SGCore::EntityBaseInfo>(joint4Entity).setParent(joint3Entity, *ecsRegistry);
+    auto& joint4Transform = ecsRegistry->emplace<SGCore::Transform>(joint4Entity, SGCore::MakeRef<SGCore::Transform>());
+    joint4Transform->m_localTransform.m_position = {  0.0f, 2.0f, 0.0f };
 
     // ============================
 
 
-    joint3.m_isEndJoint = true;
-    joint3.m_targetPosition = m_ikTargetPosition;
+    joint4.m_isEndJoint = true;
+    joint4.m_targetPosition = m_ikTargetPosition;
 
-    m_roboarmTargetJoint = &joint3;
+    m_roboarmTargetJoint = &joint4;
 
     // endJointTransform->m_localTransform.m_position += glm::vec3 { -100.0f, -100.0f, -100.0f };
 
