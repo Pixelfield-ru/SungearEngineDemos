@@ -268,7 +268,10 @@ void App::onInit() noexcept
     auto& joint0Transform = ecsRegistry->emplace<SGCore::Transform>(m_roboarmEntity, SGCore::MakeRef<SGCore::Transform>());
     joint0Transform->m_localTransform.m_position = {  -2.0f, 0.0f, 0.0f };
     // joint0Transform->m_localTransform.m_scale = { 0.1f, 1.0f, 0.1f };
-    joint0Transform->m_localTransform.m_rotation = glm::angleAxis(glm::radians(45.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    // joint0Transform->m_localTransform.m_rotation = glm::angleAxis(glm::radians(45.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    joint0.m_useRotationConstraints = true;
+    joint0.m_constraintAxis = -SGCore::MathUtils::up3;
+    joint0.m_constraintMaxAngle = 10.0f;
 
     auto joint0Mesh = cubeModelMesh->addOnScene(scene);
     ecsRegistry->get<SGCore::EntityBaseInfo>(joint0Mesh).setParent(m_roboarmEntity, *ecsRegistry);
@@ -287,8 +290,8 @@ void App::onInit() noexcept
     auto& joint1Transform = ecsRegistry->emplace<SGCore::Transform>(joint1Entity, SGCore::MakeRef<SGCore::Transform>());
     joint1Transform->m_localTransform.m_position = {  0.0f, 2.0f, 0.0f };
     joint1.m_useRotationConstraints = true;
-    joint1.m_constraintAxis = SGCore::MathUtils::right3;
-    joint1.m_constraintMaxAngle = 50.0f;
+    joint1.m_constraintAxis = SGCore::MathUtils::up3;
+    joint1.m_constraintMaxAngle = 100.0f;
     // joint1.m_constraintMaxRotation = { 30.0f, 360.0f, 30.0f };
     // joint1.m_constraintMinRotation = { -30.0f, -360.0f, -30.0f };
 
@@ -308,6 +311,9 @@ void App::onInit() noexcept
     ecsRegistry->get<SGCore::EntityBaseInfo>(joint2Entity).setParent(joint1Entity, *ecsRegistry);
     auto& joint2Transform = ecsRegistry->emplace<SGCore::Transform>(joint2Entity, SGCore::MakeRef<SGCore::Transform>());
     joint2Transform->m_localTransform.m_position = {  0.0f, 2.0f, 0.0f };
+    joint2.m_useRotationConstraints = true;
+    joint2.m_constraintAxis = SGCore::MathUtils::up3;
+    joint2.m_constraintMaxAngle = 100.0f;
     /*joint2.m_useRotationConstraints = true;
     joint2.m_maxRotation = { 50.0f, 360.0f, 50.0f };
     joint2.m_minRotation = { -50.0f, -360.0f, -50.0f };*/
@@ -328,6 +334,9 @@ void App::onInit() noexcept
     ecsRegistry->get<SGCore::EntityBaseInfo>(joint3Entity).setParent(joint2Entity, *ecsRegistry);
     auto& joint3Transform = ecsRegistry->emplace<SGCore::Transform>(joint3Entity, SGCore::MakeRef<SGCore::Transform>());
     joint3Transform->m_localTransform.m_position = {  0.0f, 2.0f, 0.0f };
+    joint3.m_useRotationConstraints = true;
+    joint3.m_constraintAxis = SGCore::MathUtils::up3;
+    joint3.m_constraintMaxAngle = 100.0f;
     /*joint2.m_useRotationConstraints = true;
     joint2.m_maxRotation = { 50.0f, 360.0f, 50.0f };
     joint2.m_minRotation = { -50.0f, -360.0f, -50.0f };*/
@@ -340,7 +349,7 @@ void App::onInit() noexcept
 
     // =============================
 
-    // fourth (end0 joint ================
+    // fifth (end joint) ================
 
     auto joint4Entity = ecsRegistry->create();
 
@@ -434,8 +443,6 @@ void App::onUpdate(double dt, double fixedDt)
 
         if(SGCore::Input::PC::mouseButtonDown(SGCore::Input::MouseButton::MOUSE_BUTTON_LEFT))
         {
-            std::cout << "mouse down!!" << std::endl;
-
             const auto cursorX = SGCore::Input::PC::getCursorPositionX();
             const auto cursorY = SGCore::Input::PC::getCursorPositionY();
 
@@ -448,6 +455,16 @@ void App::onUpdate(double dt, double fixedDt)
                                                                        { screenWidth, screenHeight },
                                                                        cameraRenderingBase->m_projectionMatrix,
                                                                        cameraRenderingBase->m_viewMatrix);
+        }
+
+        if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_UP))
+        {
+            m_ikTargetPosition.y += 0.1f;
+        }
+
+        if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_DOWN))
+        {
+            m_ikTargetPosition.y -= 0.1f;
         }
 
         debugDraw->drawLine(m_ikTargetPosition, m_ikTargetPosition + glm::vec3 { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f });
