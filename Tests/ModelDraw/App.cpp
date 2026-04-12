@@ -270,9 +270,12 @@ void App::onInit() noexcept
     joint0.m_rotationDirectionReference = -SGCore::MathUtils::up3;
     // joint0Transform->m_localTransform.m_scale = { 0.1f, 1.0f, 0.1f };
     // joint0Transform->m_localTransform.m_rotation = glm::angleAxis(glm::radians(45.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    // это рут.
+    // x это ограничение по вращению по Y. ну потому что референсный вектор вращения это up
     joint0.m_useRotationConstraints = true;
-    joint0.m_constraintMaxRotation = { 0.0f, 50, 2.0f };
-    joint0.m_constraintMinRotation = { -0.0f, -50, -130.0f };
+    joint0.m_constraintMaxRotation = { 50.0f, 0, 2.0f };
+    joint0.m_constraintMinRotation = { -50.0f, -0, -130.0f };
+    joint0.m_isFixed = true;
 
     auto joint0Mesh = cubeModelMesh->addOnScene(scene);
     ecsRegistry->get<SGCore::EntityBaseInfo>(joint0Mesh).setParent(m_roboarmEntity, *ecsRegistry);
@@ -292,8 +295,8 @@ void App::onInit() noexcept
     joint1Transform->m_localTransform.m_position = {  0.0f, 2.0f, 0.0f };
     joint1.m_rotationDirectionReference = -SGCore::MathUtils::up3;
     joint1.m_useRotationConstraints = true;
-    joint1.m_constraintMaxRotation = { 0.0f, 0.0f, 2.0f };
-    joint1.m_constraintMinRotation = { -0.0f, -0.0f, -130.0f };
+    joint1.m_constraintMaxRotation = { 5.0f, 0.0f, 2.0f };
+    joint1.m_constraintMinRotation = { -5.0f, -0.0f, -130.0f };
 
     auto join1Mesh = cubeModelMesh->addOnScene(scene);
     ecsRegistry->get<SGCore::EntityBaseInfo>(join1Mesh).setParent(joint1Entity, *ecsRegistry);
@@ -313,8 +316,12 @@ void App::onInit() noexcept
     joint2Transform->m_localTransform.m_position = {  0.0f, 2.0f, 0.0f };
     joint2.m_rotationDirectionReference = -SGCore::MathUtils::up3;
     joint2.m_useRotationConstraints = true;
-    joint2.m_constraintMaxRotation = { 0.0f, 0.0f, 2.0f };
-    joint2.m_constraintMinRotation = { -0.0f, -0.0f, -130.0f };
+    joint2.m_constraintMaxRotation = { 5.0f, 0.0f, 2.0f };
+    joint2.m_constraintMinRotation = { -5.0f, -0.0f, -130.0f };
+
+    /*joint2.m_isEndJoint = true;
+
+    auto& jointRoot2 = ecsRegistry->emplace<SGCore::IKRootJoint>(joint2Entity);*/
 
     auto joint2Mesh = cubeModelMesh->addOnScene(scene);
     ecsRegistry->get<SGCore::EntityBaseInfo>(joint2Mesh).setParent(joint2Entity, *ecsRegistry);
@@ -331,14 +338,14 @@ void App::onInit() noexcept
     auto& joint3 = ecsRegistry->emplace<SGCore::IKJoint>(joint3Entity);
     ecsRegistry->get<SGCore::EntityBaseInfo>(joint3Entity).setParent(joint2Entity, *ecsRegistry);
     auto& joint3Transform = ecsRegistry->emplace<SGCore::Transform>(joint3Entity, SGCore::MakeRef<SGCore::Transform>());
-    joint3Transform->m_localTransform.m_position = {  0.0f, -2.0f, 0.0f };
+    joint3Transform->m_localTransform.m_position = {  0.0f, 2.0f, 0.0f };
     joint3.m_rotationDirectionReference = -SGCore::MathUtils::up3;
     // joint3.m_useRotationConstraints = true;
     // joint3.m_constraintAxis = SGCore::MathUtils::up3;
     // joint3.m_constraintMaxAngle = 100.0f;
     joint3.m_useRotationConstraints = true;
-    joint3.m_constraintMaxRotation = { 0.0f, 0.0f, 2.0f };
-    joint3.m_constraintMinRotation = { -0.0f, -0.0f, -130.0f };
+    joint3.m_constraintMaxRotation = { 5.0f, 0.0f, 2.0f };
+    joint3.m_constraintMinRotation = { -5.0f, -0.0f, -130.0f };
 
     auto joint3Mesh = cubeModelMesh->addOnScene(scene);
     ecsRegistry->get<SGCore::EntityBaseInfo>(joint3Mesh).setParent(joint3Entity, *ecsRegistry);
@@ -357,17 +364,20 @@ void App::onInit() noexcept
     auto& joint4Transform = ecsRegistry->emplace<SGCore::Transform>(joint4Entity, SGCore::MakeRef<SGCore::Transform>());
     joint4Transform->m_localTransform.m_position = {  0.0f, 2.0f, 0.0f };
     joint4.m_rotationDirectionReference = -SGCore::MathUtils::up3;
-    /*joint4.m_useRotationConstraints = true;
-    joint4.m_constraintMaxRotation = { 0.0f, 0.0f, 2.0f };
-    joint4.m_constraintMinRotation = { -0.0f, -0.0f, -80.0f };*/
+    // joint4.m_useRotationConstraints = true;
+    joint4.m_constraintMaxRotation = { 5.0f, 0.0f, 2.0f };
+    joint4.m_constraintMinRotation = { -5.0f, -0.0f, -130.0f };
+    // joint4Transform->m_localTransform.m_position = m_ikTargetPosition;
 
     // ============================
 
 
     joint4.m_isEndJoint = true;
+    joint4.m_isFixed = true;
     joint4.m_targetPosition = m_ikTargetPosition;
 
     m_roboarmTargetJoint = &joint4;
+    // m_roboarmTargetJoint = &joint2;
 
     // endJointTransform->m_localTransform.m_position += glm::vec3 { -100.0f, -100.0f, -100.0f };
 
@@ -376,6 +386,7 @@ void App::onInit() noexcept
     m_roboarmJoints.push_back(joint1Entity);
     m_roboarmJoints.push_back(joint2Entity);
     m_roboarmJoints.push_back(joint3Entity);
+    m_roboarmJoints.push_back(joint4Entity);
 
     /*auto Mano = roboarmInfo.findEntity(*ecsRegistry, "Mano");
     ecsRegistry->get<SGCore::Transform>(Mano)->m_localTransform.m_rotation = glm::identity<glm::quat>();
@@ -501,6 +512,19 @@ void App::onUpdate(double dt, double fixedDt)
         ssaoEffect->setEnabled(!ssaoEffect->isEnabled());
     }
 
+    if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_5))
+    {
+        auto rootJoints = currentScene->getECSRegistry()->view<SGCore::IKRootJoint>();
+
+        rootJoints.each([currentScene](SGCore::IKRootJoint& rootJoint) {
+            rootJoint.buildChains(*currentScene->getECSRegistry());
+        });
+
+        std::println(std::cout, "IK chains built");
+        /*auto& rootJoint = currentScene->getECSRegistry()->get<SGCore::IKRootJoint>(m_roboarmEntity);
+        rootJoint.buildChains(*currentScene->getECSRegistry());*/
+    }
+
     if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_MINUS))
     {
         m_testIdleNode->m_animationSpeed -= 0.1f;
@@ -511,7 +535,15 @@ void App::onUpdate(double dt, double fixedDt)
         m_testIdleNode->m_animationSpeed += 0.1f;
     }
 
+    // if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_7))
+    {
+        currentScene->getECSRegistry()->get<SGCore::IKJoint>(m_roboarmEntity).m_updateIK = true;
+    }
+
     m_roboarmTargetJoint->m_targetPosition = m_ikTargetPosition;
+
+    auto& ikRootTransform = currentScene->getECSRegistry()->get<SGCore::Transform>(m_roboarmEntity);
+    // std::println(std::cout, "ik root node rotation: {}", glm::to_string(glm::degrees(glm::eulerAngles(ikRootTransform->m_worldTransform.m_rotation))));
 }
 
 void App::onFixedUpdate(double dt, double fixedDt)

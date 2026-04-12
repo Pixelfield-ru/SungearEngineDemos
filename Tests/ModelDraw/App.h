@@ -26,6 +26,6 @@ private:
     SGCore::ECS::entity_t m_roboarmEntity = entt::null;
     std::vector<SGCore::ECS::entity_t> m_roboarmJoints;
     SGCore::Ref<SGCore::IAnimationNode> m_testIdleNode;
-    glm::vec3 m_ikTargetPosition = { 1.0f, 0.4f, 0.0f };
+    glm::vec3 m_ikTargetPosition = { 5.0f, -0.0f, 0.0f };
     SGCore::IKJoint* m_roboarmTargetJoint {};
 };
