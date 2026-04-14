@@ -273,8 +273,8 @@ void App::onInit() noexcept
     // это рут.
     // x это ограничение по вращению по Y. ну потому что референсный вектор вращения это up
     joint0.m_useRotationConstraints = true;
-    joint0.m_constraintMaxRotation = { 50.0f, 0, 2.0f };
-    joint0.m_constraintMinRotation = { -50.0f, -0, -130.0f };
+    joint0.m_constraintMaxRotation = { 0.0f, 50.0f, 0.0f };
+    joint0.m_constraintMinRotation = { -0.0f, -50.0f, -0.0f };
     joint0.m_isFixed = true;
 
     auto joint0Mesh = cubeModelMesh->addOnScene(scene);
