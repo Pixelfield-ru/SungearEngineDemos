@@ -10,6 +10,7 @@
 #include <SGCore/Memory/Assets/AudioTrackAsset.h>
 #include <SGCore/Memory/Assets/ModelAsset.h>
 #include <SGCore/Motion/IK/IKJoint.h>
+#include <SGCore/Render/PostProcess/StandardFX/Distortion.h>
 
 struct App : SGCore::BasicApp
 {
@@ -28,4 +29,5 @@ private:
     SGCore::Ref<SGCore::IAnimationNode> m_testIdleNode;
     glm::vec3 m_ikTargetPosition = { 5.0f, -0.0f, 0.0f };
     SGCore::IKJoint* m_roboarmTargetJoint {};
+    SGCore::Ref<SGCore::Distortion> m_distortionFX;
 };

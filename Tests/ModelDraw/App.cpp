@@ -222,6 +222,7 @@ void App::onInit() noexcept
 
     auto cubeTestMaterial = mainAssetManager->getOrAddAssetByAlias<SGCore::IMaterial>("cube_test_material");
     cubeTestMaterial->m_meshRenderState.m_useFacesCulling = false;
+    cubeTestMaterial->setDiffuseColor({ 0.0f, 0.0f, 0.0f, 0.0f });
 
     std::vector<SGCore::ECS::entity_t> cubeEntities;
     SGCore::ECS::entity_t cubeMeshEntity;
@@ -237,6 +238,13 @@ void App::onInit() noexcept
         }
     });
 
+    m_distortionFX = SGCore::MakeRef<SGCore::Distortion>();
+
+    auto& frameReceiver = ecsRegistry->get<SGCore::LayeredFrameReceiver>(getCameraEntity());
+
+    auto ppLayer0 = frameReceiver.addLayer("distortion_layer");
+    ppLayer0->addEffect(m_distortionFX);
+
     const auto cubeRootEntity = cubeEntities[0];
 
     auto cubeTransform = ecsRegistry->get<SGCore::Transform>(cubeRootEntity);
@@ -244,6 +252,7 @@ void App::onInit() noexcept
 
     auto& cubeMesh = ecsRegistry->get<SGCore::Mesh>(cubeMeshEntity);
     cubeMesh.m_base.setMaterial(cubeTestMaterial);
+    cubeMesh.m_base.m_layeredFrameReceiversMarkup[&frameReceiver] = ppLayer0;
 
     m_roboarmModel = SGCore::AssetManager::getInstance()->loadAsset<SGCore::ModelAsset>(
         demosPath / "Tests/ModelDraw/Resources/roboarm_0/scene.gltf");
@@ -273,8 +282,8 @@ void App::onInit() noexcept
     // это рут.
     // x это ограничение по вращению по Y. ну потому что референсный вектор вращения это up
     joint0.m_useRotationConstraints = true;
-    joint0.m_constraintMaxRotation = { 0.0f, 50.0f, 0.0f };
-    joint0.m_constraintMinRotation = { -0.0f, -50.0f, -0.0f };
+    /*joint0.m_constraintMaxRotation = { 0.0f, 50.0f, 0.0f };
+    joint0.m_constraintMinRotation = { -0.0f, -50.0f, -0.0f };*/
     joint0.m_isFixed = true;
 
     auto joint0Mesh = cubeModelMesh->addOnScene(scene);
@@ -295,8 +304,8 @@ void App::onInit() noexcept
     joint1Transform->m_localTransform.m_position = {  0.0f, 2.0f, 0.0f };
     joint1.m_rotationDirectionReference = -SGCore::MathUtils::up3;
     joint1.m_useRotationConstraints = true;
-    joint1.m_constraintMaxRotation = { 5.0f, 0.0f, 2.0f };
-    joint1.m_constraintMinRotation = { -5.0f, -0.0f, -130.0f };
+    /*joint1.m_constraintMaxRotation = { 5.0f, 0.0f, 2.0f };
+    joint1.m_constraintMinRotation = { -5.0f, -0.0f, -130.0f };*/
 
     auto join1Mesh = cubeModelMesh->addOnScene(scene);
     ecsRegistry->get<SGCore::EntityBaseInfo>(join1Mesh).setParent(joint1Entity, *ecsRegistry);
@@ -316,8 +325,8 @@ void App::onInit() noexcept
     joint2Transform->m_localTransform.m_position = {  0.0f, 2.0f, 0.0f };
     joint2.m_rotationDirectionReference = -SGCore::MathUtils::up3;
     joint2.m_useRotationConstraints = true;
-    joint2.m_constraintMaxRotation = { 5.0f, 0.0f, 2.0f };
-    joint2.m_constraintMinRotation = { -5.0f, -0.0f, -130.0f };
+    /*joint2.m_constraintMaxRotation = { 5.0f, 0.0f, 2.0f };
+    joint2.m_constraintMinRotation = { -5.0f, -0.0f, -130.0f };*/
 
     /*joint2.m_isEndJoint = true;
 
@@ -344,8 +353,8 @@ void App::onInit() noexcept
     // joint3.m_constraintAxis = SGCore::MathUtils::up3;
     // joint3.m_constraintMaxAngle = 100.0f;
     joint3.m_useRotationConstraints = true;
-    joint3.m_constraintMaxRotation = { 5.0f, 0.0f, 2.0f };
-    joint3.m_constraintMinRotation = { -5.0f, -0.0f, -130.0f };
+    /*joint3.m_constraintMaxRotation = { 5.0f, 0.0f, 2.0f };
+    joint3.m_constraintMinRotation = { -5.0f, -0.0f, -130.0f };*/
 
     auto joint3Mesh = cubeModelMesh->addOnScene(scene);
     ecsRegistry->get<SGCore::EntityBaseInfo>(joint3Mesh).setParent(joint3Entity, *ecsRegistry);
@@ -365,8 +374,8 @@ void App::onInit() noexcept
     joint4Transform->m_localTransform.m_position = {  0.0f, 2.0f, 0.0f };
     joint4.m_rotationDirectionReference = -SGCore::MathUtils::up3;
     // joint4.m_useRotationConstraints = true;
-    joint4.m_constraintMaxRotation = { 5.0f, 0.0f, 2.0f };
-    joint4.m_constraintMinRotation = { -5.0f, -0.0f, -130.0f };
+    /*joint4.m_constraintMaxRotation = { 5.0f, 0.0f, 2.0f };
+    joint4.m_constraintMinRotation = { -5.0f, -0.0f, -130.0f };*/
     // joint4Transform->m_localTransform.m_position = m_ikTargetPosition;
 
     // ============================
