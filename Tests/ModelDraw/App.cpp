@@ -28,6 +28,8 @@
 #include <SGCore/Render/RenderPipelinesManager.h>
 #include <SGCore/Transformations/TransformUtils.h>
 #include <SGCore/Render/RenderingBase.h>
+#include <SGCore/Render/Alpha/TransparentEntityTag.h>
+#include <SGCore/Render/Alpha/OpaqueEntityTag.h>
 
 SGCore::Coro::Task<> moveSmoothly(SGCore::ECS::entity_t entity, glm::vec3 to, float speed)
 {
@@ -222,7 +224,8 @@ void App::onInit() noexcept
 
     auto cubeTestMaterial = mainAssetManager->getOrAddAssetByAlias<SGCore::IMaterial>("cube_test_material");
     cubeTestMaterial->m_meshRenderState.m_useFacesCulling = false;
-    cubeTestMaterial->setDiffuseColor({ 0.0f, 0.0f, 0.0f, 0.0f });
+    cubeTestMaterial->setDiffuseColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+    // cubeTestMaterial->m_transparencyType = SGCore::MaterialTransparencyType::MAT_BLEND;
 
     std::vector<SGCore::ECS::entity_t> cubeEntities;
     SGCore::ECS::entity_t cubeMeshEntity;
@@ -237,6 +240,9 @@ void App::onInit() noexcept
             cubeMeshEntity = entity;
         }
     });
+
+    ecsRegistry->erase<SGCore::OpaqueEntityTag>(cubeMeshEntity);
+    ecsRegistry->emplace<SGCore::TransparentEntityTag>(cubeMeshEntity);
 
     m_distortionFX = SGCore::MakeRef<SGCore::Distortion>();
 
