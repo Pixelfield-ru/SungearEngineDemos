@@ -127,27 +127,26 @@ void createBallAndApplyImpulse(const glm::vec3& spherePos,
         }
     );
 
-    auto sphereRigidbody3D = scene->getECSRegistry()->emplace<SGCore::Rigidbody3D>(sphereEntities[2],
-        SGCore::MakeRef<SGCore::Rigidbody3D>(
-            scene->getSystem<SGCore::PhysicsWorld3D>()));
+    auto& sphereRigidbody3D = scene->getECSRegistry()->emplace<SGCore::Rigidbody3D>(sphereEntities[2],
+            scene->getSystem<SGCore::PhysicsWorld3D>());
 
     SGCore::Ref<btSphereShape> sphereRigidbody3DShape = SGCore::MakeRef<btSphereShape>(1.0);
     btTransform sphereShapeTransform;
     sphereShapeTransform.setIdentity();
-    sphereRigidbody3D->addShape(sphereShapeTransform, sphereRigidbody3DShape);
-    sphereRigidbody3D->setType(SGCore::PhysicalObjectType::OT_DYNAMIC);
-    sphereRigidbody3D->m_body->setRestitution(0.9);
+    sphereRigidbody3D.addShape(sphereShapeTransform, sphereRigidbody3DShape);
+    sphereRigidbody3D.setType(SGCore::PhysicalObjectType::OT_DYNAMIC);
+    sphereRigidbody3D.m_body->setRestitution(0.9);
     btScalar mass = 100.0f;
     btVector3 inertia(0, 0, 0);
-    sphereRigidbody3D->m_body->getCollisionShape()->calculateLocalInertia(mass, inertia);
-    sphereRigidbody3D->m_body->setMassProps(mass, inertia);
-    sphereRigidbody3D->reAddToWorld();
+    sphereRigidbody3D.m_body->getCollisionShape()->calculateLocalInertia(mass, inertia);
+    sphereRigidbody3D.m_body->setMassProps(mass, inertia);
+    sphereRigidbody3D.reAddToWorld();
 
     glm::vec3 finalImpulse = impulse;
-    sphereRigidbody3D->m_body->applyCentralImpulse({ finalImpulse.x, finalImpulse.y, finalImpulse.z });
+    sphereRigidbody3D.m_body->applyCentralImpulse({ finalImpulse.x, finalImpulse.y, finalImpulse.z });
 
-    SGCore::Ref<SGCore::Transform>& sphereTransform = scene->getECSRegistry()->get<SGCore::Transform>(sphereEntities[0]);
-    sphereTransform->m_localTransform.m_position = spherePos;
+    auto& sphereTransform = scene->getECSRegistry()->get<SGCore::Transform>(sphereEntities[0]);
+    sphereTransform.m_localTransform.m_position = spherePos;
 }
 
 void regenerateTerrainPhysicalMesh(SGCore::ECS::entity_t terrainEntity)
@@ -156,7 +155,7 @@ void regenerateTerrainPhysicalMesh(SGCore::ECS::entity_t terrainEntity)
     auto& terrainMesh = scene->getECSRegistry()->get<SGCore::Mesh>(terrainEntity);
     auto& terrainRigidbody = scene->getECSRegistry()->get<SGCore::Rigidbody3D>(terrainEntity);
 
-    terrainRigidbody->removeFromWorld();
+    terrainRigidbody.removeFromWorld();
 
     // generating terrain physical mesh
     terrainComponent.generatePhysicalMesh(terrainMesh, 5);
@@ -164,10 +163,10 @@ void regenerateTerrainPhysicalMesh(SGCore::ECS::entity_t terrainEntity)
     SGCore::Ref<btBvhTriangleMeshShape> terrainRigidbodyShape = SGCore::MakeRef<btBvhTriangleMeshShape>(terrainMeshData->m_physicalMesh.get(), true);
     btTransform terrainShapeTransform;
     terrainShapeTransform.setIdentity();
-    terrainRigidbody->removeAllShapes();
-    terrainRigidbody->addShape(terrainShapeTransform, terrainRigidbodyShape);
+    terrainRigidbody.removeAllShapes();
+    terrainRigidbody.addShape(terrainShapeTransform, terrainRigidbodyShape);
 
-    terrainRigidbody->reAddToWorld();
+    terrainRigidbody.reAddToWorld();
 }
 
 void regenerateTerrainNavGrid(SGCore::ECS::entity_t terrainEntity)
@@ -525,10 +524,10 @@ void coreInit()
     mainCamera = ecsRegistry->create();
 
     // creating components for entity
-    auto cameraTransform = ecsRegistry->emplace<SGCore::Transform>(mainCamera, SGCore::MakeRef<SGCore::Transform>());
+    auto cameraTransform = ecsRegistry->emplace<SGCore::Transform>(mainCamera);
     ecsRegistry->emplace<SGCore::NonSavable>(mainCamera);
-    ecsRegistry->emplace<SGCore::Camera3D>(mainCamera, SGCore::MakeRef<SGCore::Camera3D>());
-    ecsRegistry->emplace<SGCore::RenderingBase>(mainCamera, SGCore::MakeRef<SGCore::RenderingBase>())->m_zFar = 70000.0;
+    ecsRegistry->emplace<SGCore::Camera3D>(mainCamera);
+    ecsRegistry->emplace<SGCore::RenderingBase>(mainCamera).m_zFar = 70000.0;
     ecsRegistry->emplace<SGCore::Controllable3D>(mainCamera)/*.m_movementSpeed = 100.0f*/;
     auto& cameraReceiver = ecsRegistry->emplace<SGCore::LayeredFrameReceiver>(mainCamera);
 
@@ -602,7 +601,7 @@ void coreInit()
 
     auto& skyboxTransform = scene->getECSRegistry()->get<SGCore::Transform>(atmosphereEntity);
 
-    skyboxTransform->m_localTransform.m_scale = { 65000, 65000, 65000 };
+    skyboxTransform.m_localTransform.m_scale = { 65000, 65000, 65000 };
 
     // =================================================================
 
@@ -673,8 +672,7 @@ void coreInit()
     regenerateTerrainNavGrid(terrainEntity);
 
     // creating rigidbody for terrain
-    auto terrainRigidbody = scene->getECSRegistry()->emplace<SGCore::Rigidbody3D>(terrainEntity,
-        SGCore::MakeRef<SGCore::Rigidbody3D>(scene->getSystem<SGCore::PhysicsWorld3D>()));
+    auto& terrainRigidbody = scene->getECSRegistry()->emplace<SGCore::Rigidbody3D>(terrainEntity, scene->getSystem<SGCore::PhysicsWorld3D>());
 
     // generating terrain physical mesh
     terrainComponent.generatePhysicalMesh(terrainMesh, 10);
@@ -682,11 +680,11 @@ void coreInit()
     SGCore::Ref<btBvhTriangleMeshShape> terrainRigidbodyShape = SGCore::MakeRef<btBvhTriangleMeshShape>(terrainMeshData->m_physicalMesh.get(), true);
     btTransform terrainShapeTransform;
     terrainShapeTransform.setIdentity();
-    terrainRigidbody->addShape(terrainShapeTransform, terrainRigidbodyShape);
+    terrainRigidbody.addShape(terrainShapeTransform, terrainRigidbodyShape);
     btScalar mass = 0.0f;
     btVector3 inertia(0, 0, 0);
-    terrainRigidbody->m_body->setMassProps(mass, inertia);
-    terrainRigidbody->reAddToWorld();
+    terrainRigidbody.m_body->setMassProps(mass, inertia);
+    terrainRigidbody.reAddToWorld();
 
     // ==========================
 
@@ -715,7 +713,7 @@ void coreInit()
         }
     });
 
-    scene->getECSRegistry()->get<SGCore::Transform>(testQuadEntities[0])->m_localTransform.m_position.y += 10.0f;
+    scene->getECSRegistry()->get<SGCore::Transform>(testQuadEntities[0]).m_localTransform.m_position.y += 10.0f;
 
     // creating decal !!! ==============================================
 
@@ -753,11 +751,11 @@ void coreInit()
     auto& volumetricMesh = ecsRegistry->emplace<SGCore::Mesh>(cloudsEntity);
     auto& cloudsTransform = ecsRegistry->emplace<SGCore::Transform>(cloudsEntity, SGCore::MakeRef<SGCore::Transform>());
     ecsRegistry->emplace<SGCore::EnableVolumetricPass>(cloudsEntity);
-    cloudsTransform->m_localTransform.m_position.y += 15000.0f;
+    cloudsTransform.m_localTransform.m_position.y += 15000.0f;
     // cloudsTransform->m_localTransform.m_position.x += 1000.0f;
-    cloudsTransform->m_localTransform.m_scale.x = 60000.0f;
-    cloudsTransform->m_localTransform.m_scale.z = 60000.0f;
-    cloudsTransform->m_localTransform.m_scale.y = 2000.0f;
+    cloudsTransform.m_localTransform.m_scale.x = 60000.0f;
+    cloudsTransform.m_localTransform.m_scale.z = 60000.0f;
+    cloudsTransform.m_localTransform.m_scale.y = 2000.0f;
 
     const auto standardCloudsMaterial = mainAssetManager->getOrAddAssetByAlias<SGCore::IMaterial>("standard_volumetric_clouds_material");
     const auto standardCubeModel = mainAssetManager->loadAsset<SGCore::ModelAsset>("${enginePath}/Resources/models/standard/cube.obj");
@@ -861,7 +859,7 @@ void onUpdate(const double& dt, const double& fixedDt)
     if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_3))
     {
         // terrainTransform->m_localTransform.m_rotation = glm::identity<glm::quat>();
-        terrainTransform->m_localTransform.m_rotation = glm::angleAxis(glm::radians(90.0f), glm::vec3(0, 0, 1)) * terrainTransform->m_localTransform.m_rotation;
+        terrainTransform.m_localTransform.m_rotation = glm::angleAxis(glm::radians(90.0f), glm::vec3(0, 0, 1)) * terrainTransform.m_localTransform.m_rotation;
 
     }
 
@@ -918,12 +916,12 @@ void onUpdate(const double& dt, const double& fixedDt)
         glm::mat3 rotationMatrix(xDir, yDir, zDir);
         glm::quat rotation = glm::quat_cast(rotationMatrix);
 
-        decalTransform->m_localTransform.m_position = worldPos;
-        decalTransform->m_localTransform.m_rotation = rotation * glm::angleAxis(glm::radians(-90.0f), glm::vec3 { 1.0f, 0.0f, 0.0f });
+        decalTransform.m_localTransform.m_position = worldPos;
+        decalTransform.m_localTransform.m_rotation = rotation * glm::angleAxis(glm::radians(-90.0f), glm::vec3 { 1.0f, 0.0f, 0.0f });
 
         if(SGCore::Input::PC::mouseButtonDown(SGCore::Input::MouseButton::MOUSE_BUTTON_LEFT))
         {
-            const glm::vec3 decalRelativePos = worldPos - terrainTransform->m_worldTransform.m_position + glm::vec3 { terrain.getPatchSize() / 2.0f, 0.0f, terrain.getPatchSize() / 2.0f };
+            const glm::vec3 decalRelativePos = worldPos - terrainTransform.m_worldTransform.m_position + glm::vec3 { terrain.getPatchSize() / 2.0f, 0.0f, terrain.getPatchSize() / 2.0f };
 
             const glm::vec2 pixelSize {
                 float(terrain.getPatchSize() * terrain.getSize().x) / (float) terrainDisplacementTex->getWidth(),
@@ -934,7 +932,7 @@ void onUpdate(const double& dt, const double& fixedDt)
 
             std::cout << "indices: " << indices.x << ", " << indices.y << std::endl;
 
-            const float paintRadius = (decalTransform->m_localTransform.m_scale.x / pixelSize.x);
+            const float paintRadius = (decalTransform.m_localTransform.m_scale.x / pixelSize.x);
             const int growRegionHalfSizeX = (int) paintRadius;
             const int growRegionHalfSizeY = (int) paintRadius;
 
@@ -1036,11 +1034,11 @@ void onUpdate(const double& dt, const double& fixedDt)
 
         if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_EQUAL))
         {
-            decalTransform->m_localTransform.m_scale += 0.1f;
+            decalTransform.m_localTransform.m_scale += 0.1f;
         }
         else if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_MINUS))
         {
-            decalTransform->m_localTransform.m_scale -= 0.1f;
+            decalTransform.m_localTransform.m_scale -= 0.1f;
         }
     }
 
@@ -1056,7 +1054,7 @@ void onUpdate(const double& dt, const double& fixedDt)
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_4))
     {
         auto& cameraTransform = scene->getECSRegistry()->get<SGCore::Transform>(mainCamera);
-        createBallAndApplyImpulse(cameraTransform->m_localTransform.m_position, cameraTransform->m_localTransform.m_forward * 200000.0f / 10.0f);
+        createBallAndApplyImpulse(cameraTransform.m_localTransform.m_position, cameraTransform.m_localTransform.m_forward * 200000.0f / 10.0f);
     }
 
     if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_5))

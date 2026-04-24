@@ -73,7 +73,7 @@ void regenerateNavMesh()
 
     for(auto e : meshesEntities)
     {
-        const auto transform = ecsRegistry->get<SGCore::Transform>(e);
+        const auto& transform = ecsRegistry->get<SGCore::Transform>(e);
         const auto& mesh = ecsRegistry->tryGet<SGCore::Mesh>(e);
 
         navMeshTriangles.reserve(navMeshTriangles.size() + mesh->m_base.getMeshData()->m_indices.size() / 3);
@@ -85,9 +85,9 @@ void regenerateNavMesh()
             const auto& v2 = mesh->m_base.getMeshData()->m_vertices[mesh->m_base.getMeshData()->m_indices[i + 2]];
 
             SGCore::MathPrimitivesUtils::Triangle<> tri;
-            tri.m_vertices[0] = transform->m_worldTransform.m_animatedModelMatrix * glm::vec4(v0.m_position, 1.0f);
-            tri.m_vertices[1] = transform->m_worldTransform.m_animatedModelMatrix * glm::vec4(v1.m_position, 1.0f);
-            tri.m_vertices[2] = transform->m_worldTransform.m_animatedModelMatrix * glm::vec4(v2.m_position, 1.0f);
+            tri.m_vertices[0] = transform.m_worldTransform.m_animatedModelMatrix * glm::vec4(v0.m_position, 1.0f);
+            tri.m_vertices[1] = transform.m_worldTransform.m_animatedModelMatrix * glm::vec4(v1.m_position, 1.0f);
+            tri.m_vertices[2] = transform.m_worldTransform.m_animatedModelMatrix * glm::vec4(v2.m_position, 1.0f);
 
             tri.calculateNormal();
 
@@ -166,7 +166,7 @@ void coreInit()
 
     auto& skyboxTransform = scene->getECSRegistry()->get<SGCore::Transform>(atmosphereEntity);
 
-    skyboxTransform->m_localTransform.m_scale = { 2000, 2000, 2000 };
+    skyboxTransform.m_localTransform.m_scale = { 2000, 2000, 2000 };
 
     // ================================================================
     // creating navmesh
@@ -197,9 +197,9 @@ void coreInit()
     npcEntity = npcEntities[0];
 
     auto& npcState = ecsRegistry->emplace<SGCore::GOAP::EntityState>(npcEntity);
-    auto npcTransform = ecsRegistry->get<SGCore::Transform>(npcEntity);
-    npcTransform->m_localTransform.m_scale = { 0.008, 0.008, 0.008 };
-    npcTransform->m_localTransform.m_position = { 0, 0, 20 };
+    auto& npcTransform = ecsRegistry->get<SGCore::Transform>(npcEntity);
+    npcTransform.m_localTransform.m_scale = { 0.008, 0.008, 0.008 };
+    npcTransform.m_localTransform.m_position = { 0, 0, 20 };
 
     // ====================================
 
@@ -239,8 +239,8 @@ SGCore::ECS::entity_t spawnVegetable(SGCore::ECS::registry_t& registry, const gl
     auto vegetableEntity = vegetableEntities[0];
 
     auto& transform = registry.get<SGCore::Transform>(vegetableEntity);
-    transform->m_localTransform.m_position = position;
-    transform->m_localTransform.m_scale = scale;
+    transform.m_localTransform.m_position = position;
+    transform.m_localTransform.m_scale = scale;
 
     return vegetableEntity;
 }

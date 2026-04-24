@@ -73,12 +73,12 @@ void App::onUpdate(double dt, double fixedDt) noexcept
 
     SGCore::CoreMain::getWindow().getSize(windowSizeX, windowSizeY);
 
-    cameraRenderingBase->m_left = -windowSizeX / 2.0f;
-    cameraRenderingBase->m_right = windowSizeX / 2.0f;
-    cameraRenderingBase->m_top = windowSizeY / 2.0f;
-    cameraRenderingBase->m_bottom = -windowSizeY / 2.0f;
-    cameraRenderingBase->m_zNear = -100;
-    cameraRenderingBase->m_zFar = 100;
+    cameraRenderingBase.m_left = -windowSizeX / 2.0f;
+    cameraRenderingBase.m_right = windowSizeX / 2.0f;
+    cameraRenderingBase.m_top = windowSizeY / 2.0f;
+    cameraRenderingBase.m_bottom = -windowSizeY / 2.0f;
+    cameraRenderingBase.m_zNear = -100;
+    cameraRenderingBase.m_zFar = 100;
 
     if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_1))
     {

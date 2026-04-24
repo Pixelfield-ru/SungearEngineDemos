@@ -31,26 +31,26 @@ void App::createBallAndApplyImpulse(const glm::vec3& spherePos, const glm::vec3&
 
     const auto sphereEntities = m_sphereModel->m_rootNode->addOnScene(scene);
 
-    auto sphereRigidbody3D = ecsRegistry->emplace<SGCore::Rigidbody3D>(sphereEntities[2], SGCore::MakeRef<SGCore::Rigidbody3D>(scene->getSystem<SGCore::PhysicsWorld3D>()));
+    auto& sphereRigidbody3D = ecsRegistry->emplace<SGCore::Rigidbody3D>(sphereEntities[2], scene->getSystem<SGCore::PhysicsWorld3D>());
 
     SGCore::Ref<btSphereShape> sphereRigidbody3DShape = SGCore::MakeRef<btSphereShape>(1.0);
     btTransform shapeTransform;
     shapeTransform.setIdentity();
-    sphereRigidbody3D->addShape(shapeTransform, sphereRigidbody3DShape);
-    sphereRigidbody3D->setType(SGCore::PhysicalObjectType::OT_DYNAMIC);
-    sphereRigidbody3D->m_body->setRestitution(0.9);
-    sphereRigidbody3D->m_body->setFriction(1.0);
+    sphereRigidbody3D.addShape(shapeTransform, sphereRigidbody3DShape);
+    sphereRigidbody3D.setType(SGCore::PhysicalObjectType::OT_DYNAMIC);
+    sphereRigidbody3D.m_body->setRestitution(0.9);
+    sphereRigidbody3D.m_body->setFriction(1.0);
     btScalar mass = 100.0f;
     btVector3 inertia(0, 0, 0);
-    sphereRigidbody3D->m_body->getCollisionShape()->calculateLocalInertia(mass, inertia);
-    sphereRigidbody3D->m_body->setMassProps(mass, inertia);
-    sphereRigidbody3D->reAddToWorld();
+    sphereRigidbody3D.m_body->getCollisionShape()->calculateLocalInertia(mass, inertia);
+    sphereRigidbody3D.m_body->setMassProps(mass, inertia);
+    sphereRigidbody3D.reAddToWorld();
 
     glm::vec3 finalImpulse = impulse;
-    sphereRigidbody3D->m_body->applyCentralImpulse({ finalImpulse.x, finalImpulse.y, finalImpulse.z });
+    sphereRigidbody3D.m_body->applyCentralImpulse({ finalImpulse.x, finalImpulse.y, finalImpulse.z });
 
-    SGCore::Ref<SGCore::Transform>& sphereTransform = ecsRegistry->get<SGCore::Transform>(sphereEntities[0]);
-    sphereTransform->m_localTransform.m_position = spherePos;
+    auto& sphereTransform = ecsRegistry->get<SGCore::Transform>(sphereEntities[0]);
+    sphereTransform.m_localTransform.m_position = spherePos;
 }
 
 void App::onInit() noexcept
@@ -88,10 +88,10 @@ void App::onInit() noexcept
 
     m_playerEntity = cubeEntities[0];
 
-    auto playerTransform = ecsRegistry->get<SGCore::Transform>(m_playerEntity);
+    auto& playerTransform = ecsRegistry->get<SGCore::Transform>(m_playerEntity);
 
-    playerTransform->m_localTransform.m_position = { 300, 10.0f, 0.0f };
-    playerTransform->m_localTransform.m_scale = { 1.0f, 1.8f, 1.0f };
+    playerTransform.m_localTransform.m_position = { 300, 10.0f, 0.0f };
+    playerTransform.m_localTransform.m_scale = { 1.0f, 1.8f, 1.0f };
 
     auto playerRigidbody3D = ecsRegistry->emplace<SGCore::Rigidbody3D>(m_playerEntity, SGCore::MakeRef<SGCore::Rigidbody3D>(physicsWorld));
 
@@ -102,22 +102,22 @@ void App::onInit() noexcept
 
     m_floorEntity = floorEntities[0];
 
-    auto floorTransform = ecsRegistry->get<SGCore::Transform>(m_floorEntity);
+    auto& floorTransform = ecsRegistry->get<SGCore::Transform>(m_floorEntity);
 
-    floorTransform->m_localTransform.m_scale = { 250.0f, 1.0f, 250.0f };
-    floorTransform->m_localTransform.m_position = { 0, -50, 0 };
+    floorTransform.m_localTransform.m_scale = { 250.0f, 1.0f, 250.0f };
+    floorTransform.m_localTransform.m_position = { 0, -50, 0 };
 
-    auto floorRigidbody3D = ecsRegistry->emplace<SGCore::Rigidbody3D>(m_floorEntity, SGCore::MakeRef<SGCore::Rigidbody3D>(physicsWorld));
+    auto& floorRigidbody3D = ecsRegistry->emplace<SGCore::Rigidbody3D>(m_floorEntity, physicsWorld);
 
     auto floorShape = SGCore::MakeRef<btBoxShape>(btVector3(250.0f, 1.0f, 250.0f));
     btTransform shapeTransform;
     shapeTransform.setIdentity();
-    floorRigidbody3D->addShape(shapeTransform, floorShape);
-    floorRigidbody3D->setType(SGCore::PhysicalObjectType::OT_STATIC);
-    floorRigidbody3D->m_body->setRestitution(0.2f);
-    floorRigidbody3D->m_body->setFriction(1.0f);
-    floorRigidbody3D->m_body->setMassProps(0.0f, { 0.0f, 0.0f, 0.0f });
-    floorRigidbody3D->reAddToWorld();
+    floorRigidbody3D.addShape(shapeTransform, floorShape);
+    floorRigidbody3D.setType(SGCore::PhysicalObjectType::OT_STATIC);
+    floorRigidbody3D.m_body->setRestitution(0.2f);
+    floorRigidbody3D.m_body->setFriction(1.0f);
+    floorRigidbody3D.m_body->setMassProps(0.0f, { 0.0f, 0.0f, 0.0f });
+    floorRigidbody3D.reAddToWorld();
 
     // ====================== creating human
     const auto humanEntities = m_humanModel->m_rootNode->addOnScene(scene);
@@ -131,44 +131,44 @@ void App::onInit() noexcept
 
     motionPlanner.m_skeleton = m_humanSkeleton;
 
-    humanTransform->m_localTransform.m_scale *= 0.1f;
+    humanTransform.m_localTransform.m_scale *= 0.1f;
     // humanTransform->m_localTransform.m_position.y = -25.0f;
-    humanTransform->m_localTransform.m_position.y = 50.0f;
+    humanTransform.m_localTransform.m_position.y = 50.0f;
 
     const auto& humanBones = m_humanSkeleton->getAllBones();
 
-    static auto addShape = [](const SGCore::Ref<SGCore::Rigidbody3D>& rigidbody, float mass, float radius, SGCore::PhysicalObjectType objectType, glm::vec3 shapeOffset = {}) {
+    static auto addShape = [](SGCore::Rigidbody3D& rigidbody, float mass, float radius, SGCore::PhysicalObjectType objectType, glm::vec3 shapeOffset = {}) {
         auto shape = SGCore::MakeRef<btSphereShape>(radius);
         btTransform shapeTransform;
         shapeTransform.setIdentity();
         shapeTransform.setOrigin({ shapeOffset.x, shapeOffset.y, shapeOffset.z });
-        rigidbody->addShape(shapeTransform, shape);
-        rigidbody->setType(objectType);
-        rigidbody->m_body->setRestitution(0.0);
-        rigidbody->m_body->setFriction(0.8f);
+        rigidbody.addShape(shapeTransform, shape);
+        rigidbody.setType(objectType);
+        rigidbody.m_body->setRestitution(0.0);
+        rigidbody.m_body->setFriction(0.8f);
         btVector3 inertia(0, 0, 0);
-        rigidbody->m_body->getCollisionShape()->calculateLocalInertia(mass, inertia);
-        rigidbody->m_body->setMassProps(mass, inertia);
-        rigidbody->reAddToWorld();
+        rigidbody.m_body->getCollisionShape()->calculateLocalInertia(mass, inertia);
+        rigidbody.m_body->setMassProps(mass, inertia);
+        rigidbody.reAddToWorld();
     };
 
-    static auto addCapsuleShape = [](const SGCore::Ref<SGCore::Rigidbody3D>& rigidbody, float mass, float radius, float height, SGCore::PhysicalObjectType objectType, glm::vec3 shapeOffset = {}) {
+    static auto addCapsuleShape = [](SGCore::Rigidbody3D& rigidbody, float mass, float radius, float height, SGCore::PhysicalObjectType objectType, glm::vec3 shapeOffset = {}) {
         auto shape = SGCore::MakeRef<btCapsuleShape>(radius, height);
         btTransform shapeTransform;
         shapeTransform.setIdentity();
         shapeTransform.setOrigin({ shapeOffset.x, shapeOffset.y, shapeOffset.z });
-        rigidbody->addShape(shapeTransform, shape);
-        rigidbody->setType(objectType);
-        rigidbody->m_body->setRestitution(0.0);
-        rigidbody->m_body->setFriction(0.8f);
+        rigidbody.addShape(shapeTransform, shape);
+        rigidbody.setType(objectType);
+        rigidbody.m_body->setRestitution(0.0);
+        rigidbody.m_body->setFriction(0.8f);
         btVector3 inertia(0, 0, 0);
-        rigidbody->m_body->getCollisionShape()->calculateLocalInertia(mass, inertia);
-        rigidbody->m_body->setMassProps(mass, inertia);
-        rigidbody->reAddToWorld();
+        rigidbody.m_body->getCollisionShape()->calculateLocalInertia(mass, inertia);
+        rigidbody.m_body->setMassProps(mass, inertia);
+        rigidbody.reAddToWorld();
     };
 
-    const auto createRigidbody = [&](SGCore::ECS::entity_t entity) {
-        return ecsRegistry->emplace<SGCore::Rigidbody3D>(entity, SGCore::MakeRef<SGCore::Rigidbody3D>(physicsWorld));
+    const auto createRigidbody = [&](SGCore::ECS::entity_t entity) -> SGCore::Rigidbody3D& {
+        return ecsRegistry->emplace<SGCore::Rigidbody3D>(entity, physicsWorld);
     };
 
     const auto sphere0Entities = m_sphereModel->m_rootNode->addOnScene(scene);
@@ -179,23 +179,23 @@ void App::onInit() noexcept
     m_sphere1Entity = sphere1Entities[0];
     m_sphere2Entity = sphere2Entities[0];
 
-    auto sphere0Transform =  ecsRegistry->get<SGCore::Transform>(m_sphere0Entity);
-    auto sphere1Transform =  ecsRegistry->get<SGCore::Transform>(m_sphere1Entity);
-    auto sphere2Transform =  ecsRegistry->get<SGCore::Transform>(m_sphere2Entity);
+    auto& sphere0Transform =  ecsRegistry->get<SGCore::Transform>(m_sphere0Entity);
+    auto& sphere1Transform =  ecsRegistry->get<SGCore::Transform>(m_sphere1Entity);
+    auto& sphere2Transform =  ecsRegistry->get<SGCore::Transform>(m_sphere2Entity);
 
 
-    sphere0Transform->m_localTransform.m_position.y += 20.0f;
+    sphere0Transform.m_localTransform.m_position.y += 20.0f;
 
-    sphere1Transform->m_localTransform.m_scale *= 2.0f;
-    sphere1Transform->m_localTransform.m_position.x = 20.0f;
+    sphere1Transform.m_localTransform.m_scale *= 2.0f;
+    sphere1Transform.m_localTransform.m_position.x = 20.0f;
 
-    sphere2Transform->m_localTransform.m_scale *= 2.0f;
-    sphere2Transform->m_localTransform.m_position.x = -20.0f;
-    sphere2Transform->m_localTransform.m_position.z = -20.0f;
+    sphere2Transform.m_localTransform.m_scale *= 2.0f;
+    sphere2Transform.m_localTransform.m_position.x = -20.0f;
+    sphere2Transform.m_localTransform.m_position.z = -20.0f;
 
-    const auto sphere0Rigidbody = createRigidbody(m_sphere0Entity);
-    const auto sphere1Rigidbody = createRigidbody(m_sphere1Entity);
-    const auto sphere2Rigidbody = createRigidbody(m_sphere2Entity);
+    auto& sphere0Rigidbody = createRigidbody(m_sphere0Entity);
+    auto& sphere1Rigidbody = createRigidbody(m_sphere1Entity);
+    auto& sphere2Rigidbody = createRigidbody(m_sphere2Entity);
 
     addShape(sphere0Rigidbody, 100.0f, 1.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);
     addShape(sphere1Rigidbody, 100.0f, 4.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);
@@ -211,17 +211,17 @@ void App::onInit() noexcept
     // adding ragdoll
 
     const auto hips = humanEntityInfo.findEntity(*ecsRegistry, "mixamorig:Hips");
-    auto hipsRigidbody = createRigidbody(hips);
+    auto& hipsRigidbody = createRigidbody(hips);
     addShape(hipsRigidbody, 15.0f, 1.0f, SGCore::PhysicalObjectType::OT_DYNAMIC, { 0.0f, 0.0f, 0.0f });
 
     const auto spine = humanEntityInfo.findEntity(*ecsRegistry, "mixamorig:Spine");
-    auto spineRigidbody = createRigidbody(spine);
+    auto& spineRigidbody = createRigidbody(spine);
     // addShape(spineRigidbody, 8.0f, 1.0f, SGCore::PhysicalObjectType::OT_DYNAMIC);
     addCapsuleShape(spineRigidbody, 8.0f, 1.0f, 2.0f, SGCore::PhysicalObjectType::OT_DYNAMIC, { 0.0f, 2.0f, 0.0f });
     // spineRigidbody->m_body->setGravity({ 0.0, 0.0, 0.0 });
 
     {
-        auto constraintInfo = hipsRigidbody->addConeTwistConstraint(*spineRigidbody, *ecsRegistry, false);
+        auto constraintInfo = hipsRigidbody.addConeTwistConstraint(*spineRigidbody, *ecsRegistry, false);
         auto constraint = std::static_pointer_cast<btConeTwistConstraint>(constraintInfo.m_constraint);
         constraint->setLimit(glm::radians(90.0f), // swing span1 (вперед-назад)
                              glm::radians(30.0f), // swing span2 (в стороны)
@@ -229,7 +229,7 @@ void App::onInit() noexcept
     }
 
     {
-        auto constraintInfo = hipsRigidbody->addPointToPointConstraint(*spineRigidbody, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, *ecsRegistry, false);
+        auto constraintInfo = hipsRigidbody.addPointToPointConstraint(*spineRigidbody, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, *ecsRegistry, false);
         auto constraint = std::static_pointer_cast<btPoint2PointConstraint>(constraintInfo.m_constraint);
         constraint->m_setting.m_tau = 0.1f;
     }
@@ -263,10 +263,11 @@ void App::onUpdate(double dt, double fixedDt) noexcept
     auto scene = SGCore::Scene::getCurrentScene();
     auto ecsRegistry = scene->getECSRegistry();
     auto physicsWorld = scene->getSystem<SGCore::PhysicsWorld3D>();
-    auto sphere0Rigidbody = ecsRegistry->get<SGCore::Rigidbody3D>(m_sphere0Entity);
-    auto sphere0Transform = ecsRegistry->get<SGCore::Transform>(m_sphere0Entity);
-    auto sphere1Rigidbody = ecsRegistry->get<SGCore::Rigidbody3D>(m_sphere1Entity);
-    auto sphere1Transform = ecsRegistry->get<SGCore::Transform>(m_sphere1Entity);
+
+    auto& sphere0Rigidbody = ecsRegistry->get<SGCore::Rigidbody3D>(m_sphere0Entity);
+    auto& sphere0Transform = ecsRegistry->get<SGCore::Transform>(m_sphere0Entity);
+    auto& sphere1Rigidbody = ecsRegistry->get<SGCore::Rigidbody3D>(m_sphere1Entity);
+    auto& sphere1Transform = ecsRegistry->get<SGCore::Transform>(m_sphere1Entity);
 
     // std::println(std::cout, "sphere1Transform pos: {}", glm::to_string(sphere1Transform->m_worldTransform.m_position));
 
@@ -274,7 +275,7 @@ void App::onUpdate(double dt, double fixedDt) noexcept
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_1))
     {
-        createBallAndApplyImpulse(cameraTransform->m_worldTransform.m_position, cameraTransform->m_worldTransform.m_forward * 200000.0f / 10.0f);
+        createBallAndApplyImpulse(cameraTransform.m_worldTransform.m_position, cameraTransform.m_worldTransform.m_forward * 200000.0f / 10.0f);
     }
 
     if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_M))
@@ -310,14 +311,14 @@ void App::onUpdate(double dt, double fixedDt) noexcept
 
         rigidbodyTransform.setRotation({ rotated.x, rotated.y, rotated.z, rotated.w });*/
 
-        const auto impulseDir = cameraTransform->m_localTransform.m_forward * 2000.0f / 10.0f;
+        const auto impulseDir = cameraTransform.m_localTransform.m_forward * 2000.0f / 10.0f;
 
-        sphere0Rigidbody->m_body->applyCentralImpulse({ impulseDir.x, impulseDir.y, impulseDir.z });
+        sphere0Rigidbody.m_body->applyCentralImpulse({ impulseDir.x, impulseDir.y, impulseDir.z });
     }
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_4))
     {
-        sphere0Transform->m_localTransform.m_position += glm::vec3 { 1.0f };
+        sphere0Transform.m_localTransform.m_position += glm::vec3 { 1.0f };
 
         /*auto& rigidbodyTransform = sphere0Rigidbody->m_body->getWorldTransform();
 
@@ -335,7 +336,7 @@ void App::onUpdate(double dt, double fixedDt) noexcept
                           glm::radians(1.0f),
                           glm::radians(1.0f));
 
-        sphere0Transform->m_localTransform.m_rotation = glm::quat(eulerAngles) * sphere0Transform->m_localTransform.m_rotation;
+        sphere0Transform.m_localTransform.m_rotation = glm::quat(eulerAngles) * sphere0Transform.m_localTransform.m_rotation;
 
 
         // rigidbodyTransform.setRotation({ rotated.x, rotated.y, rotated.z, rotated.w });
@@ -343,7 +344,7 @@ void App::onUpdate(double dt, double fixedDt) noexcept
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_6))
     {
-        auto& rigidbodyTransform = sphere0Rigidbody->m_body->getWorldTransform();
+        auto& rigidbodyTransform = sphere0Rigidbody.m_body->getWorldTransform();
 
         const auto rotated = glm::identity<glm::quat>();
 
@@ -352,7 +353,7 @@ void App::onUpdate(double dt, double fixedDt) noexcept
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_7))
     {
-        auto& rigidbodyTransform = sphere1Rigidbody->m_body->getWorldTransform();
+        auto& rigidbodyTransform = sphere1Rigidbody.m_body->getWorldTransform();
 
         const auto btRotation = rigidbodyTransform.getRotation();
         const auto glmRotation = glm::quat(btRotation.w(), btRotation.x(), btRotation.y(), btRotation.z());
