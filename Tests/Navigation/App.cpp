@@ -8,9 +8,6 @@
 #include <SGCore/Input/PCInput.h>
 #include <SGCore/Memory/Assets/ModelAsset.h>
 #include <SGCore/Navigation/NavMesh/NavMesh.h>
-#include <SGCore/Navigation/NavMesh/Steps/InputFilteringStep.h>
-#include <SGCore/Navigation/NavMesh/Steps/RegionsPartitionStep.h>
-#include <SGCore/Navigation/NavMesh/Steps/VoxelizationStep.h>
 #include <SGCore/Render/DebugDraw.h>
 #include <SGCore/Scene/Scene.h>
 #include <SGCore/Render/Mesh.h>
@@ -24,6 +21,7 @@
 #include <SGCore/Render/ShadowMapping/CSM/CSMTarget.h>
 #include <SGCore/Render/ShadowMapping/ShadowCaster.h>
 #include <SGCore/Render/Atmosphere/Atmosphere.h>
+#include <SGCore/Math/Primitives.h>
 
 void App::rebuildNavMesh(const std::vector<SGCore::ECS::entity_t>& meshedEntities) noexcept
 {
@@ -31,7 +29,7 @@ void App::rebuildNavMesh(const std::vector<SGCore::ECS::entity_t>& meshedEntitie
 
     auto& navMesh = ecsRegistry->get<SGCore::Navigation::NavMesh>(m_navMeshEntity);
 
-    std::vector<SGCore::MathPrimitivesUtils::Triangle<>> navMeshTriangles;
+    std::vector<SGCore::Primitives::Triangle<>> navMeshTriangles;
 
     for(auto e : meshedEntities)
     {
@@ -46,7 +44,7 @@ void App::rebuildNavMesh(const std::vector<SGCore::ECS::entity_t>& meshedEntitie
             const auto& v1 = mesh->m_base.getMeshData()->m_vertices[mesh->m_base.getMeshData()->m_indices[i + 1]];
             const auto& v2 = mesh->m_base.getMeshData()->m_vertices[mesh->m_base.getMeshData()->m_indices[i + 2]];
 
-            SGCore::MathPrimitivesUtils::Triangle<> tri;
+            SGCore::Primitives::Triangle<> tri;
             tri.m_vertices[0] = transform.m_worldTransform.m_animatedModelMatrix * glm::vec4(v0.m_position, 1.0f);
             tri.m_vertices[1] = transform.m_worldTransform.m_animatedModelMatrix * glm::vec4(v1.m_position, 1.0f);
             tri.m_vertices[2] = transform.m_worldTransform.m_animatedModelMatrix * glm::vec4(v2.m_position, 1.0f);
@@ -57,7 +55,7 @@ void App::rebuildNavMesh(const std::vector<SGCore::ECS::entity_t>& meshedEntitie
         }
     }
 
-    navMesh.build(std::move(navMeshTriangles));
+    navMesh.build(navMeshTriangles);
 }
 
 void App::onInit() noexcept
@@ -68,13 +66,13 @@ void App::onInit() noexcept
 
     auto assetManager = SGCore::AssetManager::getInstance();
 
-    auto& frameReceiver = ecsRegistry->get<SGCore::LayeredFrameReceiver>(getCameraEntity());
+    auto& frameReceiver = ecsRegistry->get<SGCore::LayeredFrameReceiver>(m_cameraEntity);
     auto bloomLayer = frameReceiver.addLayer("BloomLayer");
 
-    auto& csmTarget = ecsRegistry->emplace<SGCore::CSMTarget>(getCameraEntity());
+    auto& csmTarget = ecsRegistry->emplace<SGCore::CSMTarget>(m_cameraEntity);
 
     // m_locationModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/Navigation/Resources/location_1/ai_test.gltf");
-    m_locationModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/AITest/Resources/location_0/scene.gltf");
+    /*m_locationModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/AITest/Resources/location_0/scene.gltf");
     auto locationEntities = m_locationModel->m_rootNode->addOnScene(SGCore::Scene::getCurrentScene());
     for(const auto& locationEntity : locationEntities)
     {
@@ -83,26 +81,27 @@ void App::onInit() noexcept
             ecsRegistry->emplace<SGCore::ShadowCaster>(locationEntity);
         }
     }
+    */
 
-    m_floorModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/Navigation/Resources/floor_2/scene.gltf");
+    /*m_floorModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/Navigation/Resources/floor_2/scene.gltf");
     auto floorEntities = m_floorModel->m_rootNode->addOnScene(SGCore::Scene::getCurrentScene());
     auto& floorTransform = ecsRegistry->get<SGCore::Transform>(floorEntities[0]);
     floorTransform.m_localTransform.m_position.y += 150.0f;
-    floorTransform.m_localTransform.m_scale *= 0.1f;
+    floorTransform.m_localTransform.m_scale *= 0.1f;*/
 
     m_cubeModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/Navigation/Resources/location_1/ai_test.gltf");
     const auto cubeEntities = m_cubeModel->m_rootNode->addOnScene(SGCore::Scene::getCurrentScene());
-    for(auto&& cubeEntity : cubeEntities)
+    for(const auto& e : cubeEntities)
     {
-        if(auto* mesh = ecsRegistry->tryGet<SGCore::Mesh>(cubeEntity))
+        if(auto* mesh = ecsRegistry->tryGet<SGCore::Mesh>(e))
         {
-            mesh->m_base.m_layeredFrameReceiversMarkup[&frameReceiver] = bloomLayer;
+            ecsRegistry->emplace<SGCore::ShadowCaster>(e);
+            //  mesh->m_base.m_layeredFrameReceiversMarkup[&frameReceiver] = bloomLayer;
         }
     }
 
     m_navMeshEntity = ecsRegistry->create();
     auto& navMesh = ecsRegistry->emplace<SGCore::Navigation::NavMesh>(m_navMeshEntity);
-    navMesh.useStandardSteps();
     navMesh.m_config.m_agentRadius = 0.5f;
     // navMesh.m_config.m_agentHeight = 100.0f;
     navMesh.m_config.m_cellHeight = 1.0f;
@@ -113,11 +112,11 @@ void App::onInit() noexcept
     {
         auto filmGrainFX = SGCore::MakeRef<SGCore::FilmGrain>();
         filmGrainFX->setIntensity(0.3);
-        frameReceiver.getDefaultLayer()->addEffect(filmGrainFX);
+        // frameReceiver.getDefaultLayer()->addEffect(filmGrainFX);
 
         auto vignetteFX = SGCore::MakeRef<SGCore::Vignette>();
         vignetteFX->setRadius(0.5);
-        frameReceiver.getDefaultLayer()->addEffect(vignetteFX);
+        // frameReceiver.getDefaultLayer()->addEffect(vignetteFX);
 
         auto ssrFX = SGCore::MakeRef<SGCore::SSR>();
         frameReceiver.getDefaultLayer()->addEffect(ssrFX);
@@ -128,15 +127,15 @@ void App::onInit() noexcept
         auto bloomFX = SGCore::MakeRef<SGCore::Bloom>();
         auto ssrFX = SGCore::MakeRef<SGCore::SSR>();
 
-        bloomLayer->addEffect(ssaoFX);
+        /*bloomLayer->addEffect(ssaoFX);
         bloomLayer->addEffect(ssrFX);
-        bloomLayer->addEffect(bloomFX);
+        bloomLayer->addEffect(bloomFX);*/
     }
 
     // ==========================================================
 
     onMouseScroll = [this, ecsRegistry](SGCore::Window&, double xScroll, double yScroll) {
-        ecsRegistry->get<SGCore::RenderingBase>(getCameraEntity()).m_fov -= yScroll;
+        ecsRegistry->get<SGCore::RenderingBase>(m_cameraEntity).m_fov -= yScroll;
     };
 
     SGCore::Input::PC::onMouseScroll() += onMouseScroll;
@@ -157,7 +156,7 @@ void App::onUpdate(double dt, double fixedDt) noexcept
 
         auto entitiesView = ecsRegistry->view<SGCore::EntityBaseInfo>();
         entitiesView.each([&](auto e, auto&) {
-            if(getAtmosphereEntity() == e) return;
+            if(m_atmosphereEntity == e) return;
 
             const auto* mesh = ecsRegistry->tryGet<SGCore::Mesh>(e);
             if(mesh)
@@ -181,7 +180,7 @@ void App::onUpdate(double dt, double fixedDt) noexcept
         }
     }
 
-    if(debugDraw->m_mode != SGCore::DebugDrawMode::NO_DEBUG)
+    /*if(debugDraw->m_mode != SGCore::DebugDrawMode::NO_DEBUG)
     {
         auto& navMesh = ecsRegistry->get<SGCore::Navigation::NavMesh>(m_navMeshEntity);
 
@@ -229,7 +228,7 @@ void App::onUpdate(double dt, double fixedDt) noexcept
                 debugDraw->drawAABB(min + offset, max - offset, { 1.0, 0.0, 0.0, 1.0 });
             }
         }
-    }
+    }*/
 
     if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_2))
     {
@@ -240,7 +239,7 @@ void App::onUpdate(double dt, double fixedDt) noexcept
         }
     }
 
-    auto& frameReceiver = ecsRegistry->get<SGCore::LayeredFrameReceiver>(getCameraEntity());
+    auto& frameReceiver = ecsRegistry->get<SGCore::LayeredFrameReceiver>(m_cameraEntity);
 
     if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_3))
     {
@@ -297,7 +296,7 @@ void App::onUpdate(double dt, double fixedDt) noexcept
         }
     }
 
-    auto& atmosphere = ecsRegistry->get<SGCore::Atmosphere>(getAtmosphereEntity());
+    auto& atmosphere = ecsRegistry->get<SGCore::Atmosphere>(m_atmosphereEntity);
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_EQUAL))
     {

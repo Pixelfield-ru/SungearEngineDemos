@@ -8,7 +8,6 @@
 #include <SGCore/Main/BasicApp.h>
 #include <SGCore/Memory/Assets/AudioTrackAsset.h>
 #include <SGCore/Memory/Assets/ModelAsset.h>
-#include <SGCore/Motion/MotionPlannerNode.h>
 
 struct App final : SGCore::BasicApp
 {
