@@ -2,7 +2,7 @@ include($ENV{SUNGEAR_SOURCES_ROOT}/cmake/utils.cmake)
 
 project(SGNavigationTest)
 
-set(SGPROJECT_SOURCES Main.cpp App.cpp App.h)
+set(SGPROJECT_SOURCES Main.cpp App.cpp App.h Path.cpp Path.h)
 
 add_executable(${PROJECT_NAME} ${SGPROJECT_SOURCES})
 

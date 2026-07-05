@@ -8,6 +8,9 @@
 #include <SGCore/Main/BasicApp.h>
 #include <SGCore/Memory/Assets/AudioTrackAsset.h>
 #include <SGCore/Memory/Assets/ModelAsset.h>
+#include <SGCore/Coro/Task.h>
+
+#include "Path.h"
 
 struct App final : SGCore::BasicApp
 {
@@ -22,7 +25,12 @@ private:
 
     SGCore::ECS::entity_t m_navMeshEntity {};
     SGCore::ECS::entity_t m_npcEntity {};
+    bool m_breakNPCLastWay {};
+
     SGCore::AssetRef<SGCore::ModelAsset> m_locationModel;
     SGCore::AssetRef<SGCore::ModelAsset> m_floorModel;
     SGCore::AssetRef<SGCore::ModelAsset> m_cubeModel;
+
+    SGCore::Ref<Path> m_lastPath;
+    SGCore::Ref<Path> m_currentPath;
 };
