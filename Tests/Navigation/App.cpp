@@ -4,6 +4,7 @@
 
 #include "App.h"
 
+#include <glm/gtx/string_cast.hpp>
 #include <SGCore/Graphics/API/IFrameBuffer.h>
 #include <SGCore/Input/PCInput.h>
 #include <SGCore/Memory/Assets/ModelAsset.h>
@@ -22,6 +23,11 @@
 #include <SGCore/Render/ShadowMapping/ShadowCaster.h>
 #include <SGCore/Render/Atmosphere/Atmosphere.h>
 #include <SGCore/Math/Primitives.h>
+#include <SGCore/Render/MeshBuilder.h>
+#include <SGCore/Render/Alpha/OpaqueEntityTag.h>
+#include <SGCore/Render/RenderAbilities/EnableMeshPass.h>
+#include <SGCore/Memory/Assets/Materials/IMaterial.h>
+#include <SGCore/Coro/Task.h>
 
 void App::rebuildNavMesh(const std::vector<SGCore::ECS::entity_t>& meshedEntities) noexcept
 {
@@ -100,10 +106,27 @@ void App::onInit() noexcept
         }
     }
 
+    m_npcEntity = ecsRegistry->create();
+    auto& sphereMesh = ecsRegistry->emplace<SGCore::Mesh>(m_npcEntity);
+    auto& sphereTransform = ecsRegistry->emplace<SGCore::Transform>(m_npcEntity);
+    ecsRegistry->emplace<SGCore::EnableMeshPass>(m_npcEntity);
+    ecsRegistry->emplace<SGCore::OpaqueEntityTag>(m_npcEntity);
+    ecsRegistry->get<SGCore::EntityBaseInfo>(m_npcEntity).setRawName("npc");
+    // ecsRegistry->emplace<SGCore::IgnoreOctrees>(m_sphereEntity);
+
+    sphereTransform.m_localTransform.m_position.y += 3.0f;
+
+    // SGCore::MeshBuilder::buildSphereVariant1(sphereMesh.m_base, 50.0f, 2.0f);
+    SGCore::MeshBuilder::buildBox3D(sphereMesh.m_base, { 4.0, 4.0, 4.0 });
+
+    LOG_I("NavDemo", "Sphere mesh vertices count: {}, indices count: {}", sphereMesh.m_base.getMeshData()->m_vertices.size(), sphereMesh.m_base.getMeshData()->m_indices.size());
+
+    // ========================== navmesh
+
     m_navMeshEntity = ecsRegistry->create();
     auto& navMesh = ecsRegistry->emplace<SGCore::Navigation::NavMesh>(m_navMeshEntity);
-    navMesh.m_config.m_agentRadius = 0.5f;
-    // navMesh.m_config.m_agentHeight = 100.0f;
+    navMesh.m_config.m_agentRadius = 1.0f;
+    navMesh.m_config.m_agentHeight = 1.0f;
     navMesh.m_config.m_cellHeight = 1.0f;
     navMesh.m_config.m_cellSize = 1.0f;
     navMesh.m_config.m_agentMaxSlope = 40.0f;
@@ -144,6 +167,30 @@ void App::onInit() noexcept
     SGCore::CoreMain::getRenderTimer().setTargetFrameRate(200.0);
 }
 
+SGCore::Coro::Task<bool> npcGoto(SGCore::Ref<SGCore::ECS::registry_t> registry, SGCore::ECS::entity_t npcEntity, glm::vec3 position, float speed)
+{
+    auto& npcTransform = registry->get<SGCore::Transform>(npcEntity);
+
+    while(glm::distance(npcTransform.m_worldTransform.m_position, position) > 0.05f)
+    {
+        // co_await SGCore::Coro::returnToCaller();
+
+        const auto dif = glm::normalize(position - npcTransform.m_localTransform.m_position);
+        npcTransform.m_localTransform.m_position += dif * speed;
+        // npcTransform.m_localTransform.m_position += ;
+    }
+
+    co_return true;
+}
+
+SGCore::Coro::Task<> npcMoveByPath(SGCore::Ref<SGCore::ECS::registry_t> registry, SGCore::ECS::entity_t npcEntity, std::vector<glm::vec3> path, float speed)
+{
+    for(const auto& pos : path)
+    {
+        co_await npcGoto(registry, npcEntity, pos, speed);
+    }
+}
+
 void App::onUpdate(double dt, double fixedDt) noexcept
 {
     const auto debugDraw = SGCore::RenderPipelinesManager::instance().getCurrentRenderPipeline()->getRenderPass<SGCore::DebugDraw>();
@@ -156,7 +203,7 @@ void App::onUpdate(double dt, double fixedDt) noexcept
 
         auto entitiesView = ecsRegistry->view<SGCore::EntityBaseInfo>();
         entitiesView.each([&](auto e, auto&) {
-            if(m_atmosphereEntity == e) return;
+            if(m_atmosphereEntity == e || m_npcEntity == e) return;
 
             const auto* mesh = ecsRegistry->tryGet<SGCore::Mesh>(e);
             if(mesh)
@@ -306,6 +353,40 @@ void App::onUpdate(double dt, double fixedDt) noexcept
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_MINUS))
     {
         atmosphere.m_sunRotation.x -= 0.2;
+    }
+
+    if(SGCore::Input::PC::mouseButtonPressed(SGCore::Input::MouseButton::MOUSE_BUTTON_LEFT))
+    {
+        auto& layeredFrameReceiver = ecsRegistry->get<SGCore::LayeredFrameReceiver>(m_cameraEntity);
+
+        int windowSizeX;
+        int windowSizeY;
+        SGCore::CoreMain::getWindow().getSize(windowSizeX, windowSizeY);
+
+        const glm::vec2 cursorPos {
+            SGCore::Input::PC::getCursorPositionX(),
+            windowSizeY - SGCore::Input::PC::getCursorPositionY()
+        };
+
+        const auto& attachment4 = layeredFrameReceiver.m_layersFrameBuffer->getAttachment(SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT4);
+
+        const glm::vec2 cursorRelativePos = {
+            cursorPos.x / windowSizeX * (attachment4->getWidth()),
+            cursorPos.y / windowSizeY * (attachment4->getHeight())
+        };
+
+        const auto worldPos = layeredFrameReceiver.m_layersFrameBuffer->readPixelsFromAttachment(cursorRelativePos, SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT4);
+
+        LOG_I("NavDemo", "Click pos: {}", glm::to_string(worldPos));
+
+        auto& npcTransform = ecsRegistry->get<SGCore::Transform>(m_npcEntity);
+
+        auto& navMesh = ecsRegistry->get<SGCore::Navigation::NavMesh>(m_navMeshEntity);
+        const auto path = navMesh.findPath(npcTransform.m_worldTransform.m_position, worldPos, { 50.0f, 50.0f, 50.0f });
+
+        LOG_I("NavDemo", "Path waypoints count: {}", path.size());
+
+        npcMoveByPath(ecsRegistry, m_npcEntity, path, 1.0f);
     }
 
     SGCore::CoreMain::getWindow().setTitle("Navigation Test. FPS: " + std::to_string(SGCore::CoreMain::getFPS()));

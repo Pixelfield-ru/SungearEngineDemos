@@ -21,6 +21,7 @@ private:
     SGCore::Slot<void(SGCore::Window&, double xScroll, double yScroll)> onMouseScroll;
 
     SGCore::ECS::entity_t m_navMeshEntity {};
+    SGCore::ECS::entity_t m_npcEntity {};
     SGCore::AssetRef<SGCore::ModelAsset> m_locationModel;
     SGCore::AssetRef<SGCore::ModelAsset> m_floorModel;
     SGCore::AssetRef<SGCore::ModelAsset> m_cubeModel;
