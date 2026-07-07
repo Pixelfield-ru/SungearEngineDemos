@@ -14,6 +14,8 @@
 
 struct App : SGCore::BasicApp
 {
+
+
     void onInit() noexcept final;
     void onUpdate(double dt, double fixedDt) final;
     void onFixedUpdate(double dt, double fixedDt) final;

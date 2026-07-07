@@ -45,9 +45,13 @@ void App::rebuildNavMesh(const std::vector<SGCore::ECS::entity_t>& meshedEntitie
 
         for(size_t i = 0; i < mesh->m_base.getMeshData()->m_indices.size(); i += 3)
         {
-            const auto& v0 = mesh->m_base.getMeshData()->m_vertices[mesh->m_base.getMeshData()->m_indices[i + 0]];
-            const auto& v1 = mesh->m_base.getMeshData()->m_vertices[mesh->m_base.getMeshData()->m_indices[i + 1]];
-            const auto& v2 = mesh->m_base.getMeshData()->m_vertices[mesh->m_base.getMeshData()->m_indices[i + 2]];
+            const auto idx0 = mesh->m_base.getMeshData()->m_indices[i + 0];
+            const auto idx1 = mesh->m_base.getMeshData()->m_indices[i + 1];
+            const auto idx2 = mesh->m_base.getMeshData()->m_indices[i + 2];
+
+            const auto& v0 = mesh->m_base.getMeshData()->m_vertices[idx0];
+            const auto& v1 = mesh->m_base.getMeshData()->m_vertices[idx1];
+            const auto& v2 = mesh->m_base.getMeshData()->m_vertices[idx2];
 
             SGCore::Primitives::Triangle<> tri;
             tri.m_vertices[0] = transform.m_worldTransform.m_animatedModelMatrix * glm::vec4(v0.m_position, 1.0f);
@@ -77,7 +81,7 @@ void App::onInit() noexcept
     auto& csmTarget = ecsRegistry->emplace<SGCore::CSMTarget>(m_cameraEntity);
 
     // m_locationModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/Navigation/Resources/location_1/ai_test.gltf");
-    /*m_locationModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/AITest/Resources/location_0/scene.gltf");
+    m_locationModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/AITest/Resources/location_0/scene.gltf");
     auto locationEntities = m_locationModel->m_rootNode->addOnScene(SGCore::Scene::getCurrentScene());
     for(const auto& locationEntity : locationEntities)
     {
@@ -86,7 +90,6 @@ void App::onInit() noexcept
             ecsRegistry->emplace<SGCore::ShadowCaster>(locationEntity);
         }
     }
-    */
 
     /*m_floorModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/Navigation/Resources/floor_2/scene.gltf");
     auto floorEntities = m_floorModel->m_rootNode->addOnScene(SGCore::Scene::getCurrentScene());
@@ -94,7 +97,7 @@ void App::onInit() noexcept
     floorTransform.m_localTransform.m_position.y += 150.0f;
     floorTransform.m_localTransform.m_scale *= 0.1f;*/
 
-    m_cubeModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/Navigation/Resources/location_1/ai_test.gltf");
+    /*m_cubeModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/Navigation/Resources/location_1/ai_test.gltf");
     const auto cubeEntities = m_cubeModel->m_rootNode->addOnScene(SGCore::Scene::getCurrentScene());
     for(const auto& e : cubeEntities)
     {
@@ -103,7 +106,7 @@ void App::onInit() noexcept
             ecsRegistry->emplace<SGCore::ShadowCaster>(e);
             //  mesh->m_base.m_layeredFrameReceiversMarkup[&frameReceiver] = bloomLayer;
         }
-    }
+    }*/
 
     m_npcEntity = ecsRegistry->create();
     auto& sphereMesh = ecsRegistry->emplace<SGCore::Mesh>(m_npcEntity);
@@ -125,7 +128,7 @@ void App::onInit() noexcept
     m_navMeshEntity = ecsRegistry->create();
     auto& navMesh = ecsRegistry->emplace<SGCore::Navigation::NavMesh>(m_navMeshEntity);
     navMesh.m_config.m_agentRadius = 1.0f;
-    navMesh.m_config.m_agentHeight = 1.0f;
+    navMesh.m_config.m_agentHeight = 3.0f;
     navMesh.m_config.m_cellHeight = 1.0f;
     navMesh.m_config.m_cellSize = 1.0f;
     navMesh.m_config.m_agentMaxSlope = 40.0f;
