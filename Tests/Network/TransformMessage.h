@@ -8,10 +8,12 @@
 
 #include <glm/vec3.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <SGCore/Utils/StaticTypeID.h>
 
-struct TransformPacket
+struct TransformMessage
 {
-    static inline std::string type_name = "TransformPacket";
+    sg_implement_nonvirtual_type_id(TransformMessage);
+
     glm::vec3 m_position { };
     glm::quat m_rotation { };
 };

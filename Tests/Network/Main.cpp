@@ -7,16 +7,24 @@
 int main(int argc, char* argv[])
 {
     StartupType startupType = StartupType::CLIENT;
-    if(argc == 1)
+    if(argc == 2)
     {
-        if(!std::strcmp(argv[0], "--server"))
+        if(!std::strcmp(argv[1], "--server"))
         {
             startupType = StartupType::SERVER;
+            std::cout << "got --server arg" << std::endl;
         }
     }
 
+    /*for(int i = 0; i < argc; i++)
+    {
+        std::cout << "arg: " << argv[i] << std::endl;
+    }*/
+
     App app;
-    app.start(true);
+    app.m_startupType = startupType;
+    // app.start(startupType == StartupType::CLIENT);
+    app.start(false);
 
     return 0;
 }
