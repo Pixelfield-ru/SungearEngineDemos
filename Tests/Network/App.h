@@ -23,7 +23,7 @@ struct App final : SGCore::BasicApp
 private:
     SGCore::AssetRef<SGCore::ModelAsset> m_cubeModel;
 
-    SGCore::Net::Server m_server;
+    std::optional<SGCore::Net::Server> m_server;
     SGCore::Net::Client m_client;
 
     SGCore::ECS::entity_t m_playerEntity = entt::null;
