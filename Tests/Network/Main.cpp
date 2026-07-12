@@ -23,8 +23,8 @@ int main(int argc, char* argv[])
 
     App app;
     app.m_startupType = startupType;
-    // app.start(startupType == StartupType::CLIENT);
-    app.start(false);
+    app.start(startupType == StartupType::CLIENT);
+    // app.start(false);
 
     return 0;
 }

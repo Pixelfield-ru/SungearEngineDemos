@@ -15,7 +15,9 @@ struct TransformMessage
 {
     sg_implement_nonvirtual_type_id(TransformMessage);
 
-    glm::vec3 m_position { };
-    glm::quat m_rotation { };
+    std::int32_t m_playerID {};
+
+    glm::vec3 m_position {};
+    glm::quat m_rotation {};
 };
 #pragma pop(pack)

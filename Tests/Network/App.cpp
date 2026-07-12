@@ -7,14 +7,16 @@
 #include <SGCore/Network/ClientConnectedMessage.h>
 #include <SGCore/Network/ClientDisconnectedMessage.h>
 #include <SGCore/Network/Packet.h>
+#include <SGCore/Render/MeshBuilder.h>
+#include <SGCore/Render/Alpha/OpaqueEntityTag.h>
+#include <SGCore/Render/RenderAbilities/EnableMeshPass.h>
 
 #include "TransformMessage.h"
 #include "AnyMessage.h"
+#include "PlayerInfoMessage.h"
 
 void App::onInit() noexcept
 {
-    std::cout << "hash of TransformMessage: " << SGCore::constexprHash("TransformMessage") << std::endl;
-
     if(m_startupType == StartupType::SERVER)
     {
         std::cout << "network test: running as server..." << std::endl;
@@ -25,6 +27,7 @@ void App::onInit() noexcept
         m_server->registerDataType<SGCore::Net::ClientConnectedMessage>();
         m_server->registerDataType<SGCore::Net::ClientDisconnectedMessage>();
         m_server->registerDataType<AnyMessage>();
+        m_server->registerDataType<PlayerInfoMessage>();
 
         m_server->runReceivePoll([this](const SGCore::Net::Packet& packet, size_t packetSize, boost::asio::ip::udp::endpoint clientEndpoint) {
             // std::cout << "got packet with size: " << packetSize << std::endl;
@@ -35,21 +38,62 @@ void App::onInit() noexcept
     }
     else
     {
+        auto ecsRegistry = SGCore::Scene::getCurrentScene()->getECSRegistry();
+
+        std::srand(std::time(nullptr));
+        m_myID = std::rand();
+
+        std::cout << "m_myID: " << m_myID << std::endl;
+
+        SGCore::MeshBuilder::buildBox3D(m_exampleMesh.m_base, { 4.0, 4.0, 4.0 });
+
+        m_client.onConnected = [this]() {
+            PlayerInfoMessage msg;
+            msg.m_playerID = m_myID;
+
+            m_client.send(msg);
+        };
+
         m_client.connect("127.0.0.1", 3045);
 
-        m_client.registerDataStream<TransformMessage>().onReceive = [](const SGCore::Net::Packet& packet, boost::asio::ip::udp::endpoint clientEndpoint) {
-            std::cout << "got transform" << std::endl;
-        };
-        /*m_client.registerDataStream<AnyMessage>().onReceive = [](const SGCore::Net::Packet& packet, boost::asio::ip::udp::endpoint clientEndpoint) {
-            std::cout << packet.data() << std::endl;
-        };*/
+        m_client.registerDataStream<TransformMessage>().onReceive = [ecsRegistry, this](const SGCore::Net::Packet& packet, boost::asio::ip::udp::endpoint clientEndpoint) {
+            // std::cout << "got transform" << std::endl;
+            const auto& msg = reinterpret_cast<const TransformMessage&>(*packet.data());
 
-        m_client.registerDataStream<SGCore::Net::ClientConnectedMessage>().onReceive = [](const SGCore::Net::Packet& packet, boost::asio::ip::udp::endpoint clientEndpoint) {
+            const auto playerEntity = m_players[msg.m_playerID];
+
+            auto& playerTransform = ecsRegistry->get<SGCore::Transform>(playerEntity);
+
+            playerTransform.m_localTransform.m_position = msg.m_position;
+            playerTransform.m_localTransform.m_rotation = msg.m_rotation;
+        };
+
+        m_client.registerDataStream<AnyMessage>().onReceive = [](const SGCore::Net::Packet& packet, boost::asio::ip::udp::endpoint clientEndpoint) {
+            std::cout << packet.data() << std::endl;
+        };
+
+        m_client.registerDataStream<PlayerInfoMessage>().onReceive = [ecsRegistry, this](const SGCore::Net::Packet& packet, boost::asio::ip::udp::endpoint clientEndpoint) {
+            const auto& msg = reinterpret_cast<const PlayerInfoMessage&>(*packet.data());
+
+            const auto playerEntity = ecsRegistry->create();
+            auto& playerMesh = ecsRegistry->emplace<SGCore::Mesh>(playerEntity);
+            auto& playerTransform = ecsRegistry->emplace<SGCore::Transform>(playerEntity);
+            ecsRegistry->emplace<SGCore::EnableMeshPass>(playerEntity);
+            ecsRegistry->emplace<SGCore::OpaqueEntityTag>(playerEntity);
+
+            playerMesh.m_base.setMeshData(m_exampleMesh.m_base.getMeshData());
+
+            m_players[msg.m_playerID] = playerEntity;
+        };
+
+        /*m_client.registerDataStream<SGCore::Net::ClientConnectedMessage>().onReceive = [](const SGCore::Net::Packet& packet, boost::asio::ip::udp::endpoint clientEndpoint) {
             std::cout << "network test: client connected" << std::endl;
+
+
         };
         m_client.registerDataStream<SGCore::Net::ClientDisconnectedMessage>().onReceive = [](const SGCore::Net::Packet& packet, boost::asio::ip::udp::endpoint clientEndpoint) {
             std::cout << "network test: client disconnected" << std::endl;
-        };
+        };*/
 
         m_client.runReceivePoll();
     }
@@ -59,15 +103,16 @@ void App::onUpdate(double dt, double fixedDt) noexcept
 {
     if(m_startupType == StartupType::CLIENT)
     {
+        auto ecsRegistry = SGCore::Scene::getCurrentScene()->getECSRegistry();
+
+        auto& cameraTransform = ecsRegistry->get<SGCore::Transform>(m_cameraEntity);
+
         TransformMessage msg;
+        msg.m_position = cameraTransform.m_localTransform.m_position;
+        msg.m_rotation = cameraTransform.m_localTransform.m_rotation;
+        msg.m_playerID = m_myID;
+
         m_client.send(msg);
-
-        const char text[] = "Hello World!\0";
-
-        /*AnyMessage anyMsg;
-        std::memcpy(anyMsg.m_message.data(), &text, sizeof(text));
-
-        m_client.send(anyMsg);*/
     }
 }
 

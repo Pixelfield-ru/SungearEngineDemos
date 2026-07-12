@@ -8,6 +8,7 @@
 #include <SGCore/Memory/Assets/ModelAsset.h>
 #include <SGCore/Network/Server.h>
 #include <SGCore/Network/Client.h>
+#include <SGCore/Render/Mesh.h>
 
 #include "StartupType.h"
 #include "SGCore/Main/BasicApp.h"
@@ -26,5 +27,11 @@ private:
     std::optional<SGCore::Net::Server> m_server;
     SGCore::Net::Client m_client;
 
-    SGCore::ECS::entity_t m_playerEntity = entt::null;
+    std::unordered_map<std::int32_t, SGCore::ECS::entity_t> m_players;
+
+    std::int32_t m_myID {};
+
+    SGCore::Mesh m_exampleMesh;
+
+    // SGCore::ECS::entity_t m_playerEntity = entt::null;
 };
