@@ -29,7 +29,7 @@ private:
 
     std::unordered_map<std::int32_t, SGCore::ECS::entity_t> m_players;
 
-    std::int32_t m_myID {};
+    std::int64_t m_currentMaxID = 1;
 
     SGCore::Mesh m_exampleMesh;
 
