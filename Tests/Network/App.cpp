@@ -16,7 +16,11 @@
 #include "AnyMessage.h"
 #include "AuthMessage.h"
 #include "AuthResponseMessage.h"
+#include "GetPlayersMessage.h"
+#include "GetPlayersResponseMessage.h"
 #include "PlayerInfoMessage.h"
+
+#define LOG_TAG "SGNetworkTest"
 
 void App::onInit() noexcept
 {
@@ -25,46 +29,61 @@ void App::onInit() noexcept
         std::cout << "network test: running as server..." << std::endl;
 
         m_server = SGCore::Net::Server(3045);
+        m_server->m_clientTimeout = std::chrono::seconds(10);
 
-        auto& authResponseType = m_server->registerDataType<AuthResponseMessage>();
+        auto& authResponseType = m_server->m_stream.registerDataType<AuthResponseMessage>();
 
-        auto& authType = m_server->registerDataType<AuthMessage>();
+        auto& authType = m_server->m_stream.registerDataType<AuthMessage>();
         authType.m_authRequired = false;
         authType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::UDPStream::endpoint_t senderEndpoint, std::int64_t senderSessionID) {
-            std::cout << "got new client! his new session id is: " << senderSessionID << std::endl;
+            LOG_I(LOG_TAG, "got new client! his new session id is: {}", senderSessionID);
 
-            if(m_server->isClientRegistered(senderSessionID))
+            if(m_server->m_stream.isClientRegistered(senderSessionID))
             {
-                std::cout << "this client is registered!" << std::endl;
+                LOG_I(LOG_TAG, "this client is registered!");
                 return;
             }
 
-            std::cout << "client is not registered! assigning " << m_currentMaxID << " as session ID!" << std::endl;
+            LOG_I(LOG_TAG, "client is not registered! assigning {} as session ID!", m_currentMaxID);
 
-            m_server->registerClient(senderEndpoint, m_currentMaxID);
+            m_server->m_stream.registerClient(senderEndpoint, m_currentMaxID);
 
             AuthResponseMessage response;
             response.m_sessionID = m_currentMaxID;
-            m_server->sendMessage(response, m_currentMaxID);
+            m_server->send(response, m_currentMaxID);
+
+            SGCore::Net::ClientConnectedMessage clientConnectedMessage;
+            m_server->propagate(clientConnectedMessage, m_currentMaxID);
 
             // dumbest way to generate session ID
             ++m_currentMaxID;
         };
 
-        /*m_server->registerDataType<TransformMessage>();
-        m_server->registerDataType<SGCore::Net::ClientConnectedMessage>();
-        m_server->registerDataType<SGCore::Net::ClientDisconnectedMessage>();
-        m_server->registerDataType<AnyMessage>();
-        m_server->registerDataType<PlayerInfoMessage>();*/
+        auto& getPlayersResponseType = m_server->m_stream.registerDataType<GetPlayersResponseMessage>();
 
-        /*m_server->runReceivePoll([this](const SGCore::Net::Packet& packet, size_t packetSize, boost::asio::ip::udp::endpoint clientEndpoint) {
-            // std::cout << "got packet with size: " << packetSize << std::endl;
-            m_server->propagatePacket(packet, std::move(clientEndpoint));
-        });*/
+        auto& getPlayersType = m_server->m_stream.registerDataType<GetPlayersMessage>();
+        getPlayersType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::UDPStream::endpoint_t senderEndpoint, std::int64_t senderSessionID) {
+            const auto& players = m_server->m_stream.getRegisteredClients();
+
+            GetPlayersResponseMessage response;
+
+            std::size_t i = 0;
+            for(const auto& [sessionID, endpointInfo] : players)
+            {
+                if(i >= response.m_players.size()) break;
+
+                response.m_players[i] = sessionID;
+                ++i;
+            }
+
+            response.m_playersCount = i;
+
+            m_server->send(response, senderSessionID);
+        };
 
         m_server->runReceivePoll();
 
-        std::cout << "network test: server created and running" << std::endl;
+        LOG_I(LOG_TAG, "network test: server created and running");
     }
     else
     {
@@ -75,20 +94,46 @@ void App::onInit() noexcept
 
         SGCore::MeshBuilder::buildBox3D(m_exampleMesh.m_base, { 4.0, 4.0, 4.0 });
 
-        /*m_client.onConnected = [this]() {
-            PlayerInfoMessage msg;
-            msg.m_playerID = m_myID;
-
-            m_client.send(msg);
-        };*/
-
-        auto& authType = m_client.registerDataType<AuthMessage>();
-        auto& authResponseType = m_client.registerDataType<AuthResponseMessage>();
+        auto& authType = m_client.m_stream.registerDataType<AuthMessage>();
+        auto& authResponseType = m_client.m_stream.registerDataType<AuthResponseMessage>();
         authResponseType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::UDPStream::endpoint_t senderEndpoint, std::int64_t senderSessionID) {
             const auto& response = *reinterpret_cast<const AuthResponseMessage*>(packet.data());
-            m_client.setSessionID(response.m_sessionID);
+            m_client.m_stream.m_sessionID = response.m_sessionID;
 
-            std::cout << "i am client and i have session id: " << m_client.getSessionID() << std::endl;
+            LOG_I(LOG_TAG, "i am client and i have session id: {}. now i want to get players!", m_client.m_stream.m_sessionID.load());
+
+            m_client.send(GetPlayersMessage{});
+        };
+
+        auto& disconnectedType = m_client.m_stream.registerDataType<SGCore::Net::ClientDisconnectedMessage>();
+        disconnectedType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::UDPStream::endpoint_t senderEndpoint, std::int64_t senderSessionID) {
+            LOG_I(LOG_TAG, "disconnected client with session id: {}", senderSessionID);
+            m_client.m_stream.removeClient(senderSessionID);
+        };
+
+        auto& getPlayersType = m_client.m_stream.registerDataType<GetPlayersMessage>();
+
+        auto& getPlayersResponseType = m_client.m_stream.registerDataType<GetPlayersResponseMessage>();
+        getPlayersResponseType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::UDPStream::endpoint_t senderEndpoint, std::int64_t senderSessionID) {
+            const auto& response = *reinterpret_cast<const GetPlayersResponseMessage*>(packet.data());
+
+            for(size_t i = 0; i < response.m_players.size(); ++i)
+            {
+                if(i >= response.m_playersCount) break;
+
+                const auto sessionID = response.m_players[i];
+
+                LOG_I(LOG_TAG, "got player with session id: {}", sessionID);
+                m_client.m_stream.registerClient(SGCore::Net::UDPStream::endpoint_t{}, sessionID);
+            }
+        };
+
+        auto& clientConnectedType = m_client.m_stream.registerDataType<SGCore::Net::ClientConnectedMessage>();
+        clientConnectedType.m_authRequired = false;
+        clientConnectedType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::UDPStream::endpoint_t senderEndpoint, std::int64_t senderSessionID) {
+            LOG_I(LOG_TAG, "client connected with session id: {}", senderSessionID);
+
+            m_client.m_stream.registerClient(SGCore::Net::UDPStream::endpoint_t{}, senderSessionID);
         };
 
         m_client.connect("127.0.0.1", 3045);
@@ -153,11 +198,17 @@ void App::onUpdate(double dt, double fixedDt) noexcept
 
         m_client.send(msg);*/
 
-        /*if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_0))
+        if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_0))
         {
-            std::cout << "sending message..." << std::endl;
+            std::cout << "sending auth message..." << std::endl;
             m_client.send(AuthMessage{});
-        }*/
+        }
+
+        if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_1))
+        {
+            std::cout << "sending get players message..." << std::endl;
+            m_client.send(GetPlayersMessage{});
+        }
     }
 }
 
