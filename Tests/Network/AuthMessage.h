@@ -10,5 +10,8 @@
 struct AuthMessage
 {
     sg_implement_nonvirtual_type_id(AuthMessage);
+
+    static constexpr bool use_rudp = true;
+    static constexpr bool use_for_auth = true;
 };
 #pragma pop(pack)

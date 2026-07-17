@@ -24,6 +24,8 @@
 
 void App::onInit() noexcept
 {
+    std::system("chcp 1251");
+
     if(m_startupType == StartupType::SERVER)
     {
         std::cout << "network test: running as server..." << std::endl;
@@ -35,7 +37,7 @@ void App::onInit() noexcept
 
         auto& authType = m_server->m_stream.registerDataType<AuthMessage>();
         authType.m_authRequired = false;
-        authType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::UDPStream::endpoint_t senderEndpoint, std::int64_t senderSessionID) {
+        authType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::RUDPStream::endpoint_t senderEndpoint, SGCore::Net::session_id_t senderSessionID) {
             LOG_I(LOG_TAG, "got new client! his new session id is: {}", senderSessionID);
 
             if(m_server->m_stream.isClientRegistered(senderSessionID))
@@ -62,7 +64,7 @@ void App::onInit() noexcept
         auto& getPlayersResponseType = m_server->m_stream.registerDataType<GetPlayersResponseMessage>();
 
         auto& getPlayersType = m_server->m_stream.registerDataType<GetPlayersMessage>();
-        getPlayersType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::UDPStream::endpoint_t senderEndpoint, std::int64_t senderSessionID) {
+        getPlayersType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::RUDPStream::endpoint_t senderEndpoint, SGCore::Net::session_id_t senderSessionID) {
             const auto& players = m_server->m_stream.getRegisteredClients();
 
             GetPlayersResponseMessage response;
@@ -96,7 +98,7 @@ void App::onInit() noexcept
 
         auto& authType = m_client.m_stream.registerDataType<AuthMessage>();
         auto& authResponseType = m_client.m_stream.registerDataType<AuthResponseMessage>();
-        authResponseType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::UDPStream::endpoint_t senderEndpoint, std::int64_t senderSessionID) {
+        authResponseType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::RUDPStream::endpoint_t senderEndpoint, SGCore::Net::session_id_t senderSessionID) {
             const auto& response = *reinterpret_cast<const AuthResponseMessage*>(packet.data());
             m_client.m_stream.m_sessionID = response.m_sessionID;
 
@@ -106,7 +108,7 @@ void App::onInit() noexcept
         };
 
         auto& disconnectedType = m_client.m_stream.registerDataType<SGCore::Net::ClientDisconnectedMessage>();
-        disconnectedType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::UDPStream::endpoint_t senderEndpoint, std::int64_t senderSessionID) {
+        disconnectedType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::RUDPStream::endpoint_t senderEndpoint, SGCore::Net::session_id_t senderSessionID) {
             LOG_I(LOG_TAG, "disconnected client with session id: {}", senderSessionID);
             m_client.m_stream.removeClient(senderSessionID);
         };
@@ -114,7 +116,7 @@ void App::onInit() noexcept
         auto& getPlayersType = m_client.m_stream.registerDataType<GetPlayersMessage>();
 
         auto& getPlayersResponseType = m_client.m_stream.registerDataType<GetPlayersResponseMessage>();
-        getPlayersResponseType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::UDPStream::endpoint_t senderEndpoint, std::int64_t senderSessionID) {
+        getPlayersResponseType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::RUDPStream::endpoint_t senderEndpoint, SGCore::Net::session_id_t senderSessionID) {
             const auto& response = *reinterpret_cast<const GetPlayersResponseMessage*>(packet.data());
 
             for(size_t i = 0; i < response.m_players.size(); ++i)
@@ -124,16 +126,16 @@ void App::onInit() noexcept
                 const auto sessionID = response.m_players[i];
 
                 LOG_I(LOG_TAG, "got player with session id: {}", sessionID);
-                m_client.m_stream.registerClient(SGCore::Net::UDPStream::endpoint_t{}, sessionID);
+                m_client.m_stream.registerClient(SGCore::Net::RUDPStream::endpoint_t{}, sessionID);
             }
         };
 
         auto& clientConnectedType = m_client.m_stream.registerDataType<SGCore::Net::ClientConnectedMessage>();
         clientConnectedType.m_authRequired = false;
-        clientConnectedType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::UDPStream::endpoint_t senderEndpoint, std::int64_t senderSessionID) {
+        clientConnectedType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::RUDPStream::endpoint_t senderEndpoint, SGCore::Net::session_id_t senderSessionID) {
             LOG_I(LOG_TAG, "client connected with session id: {}", senderSessionID);
 
-            m_client.m_stream.registerClient(SGCore::Net::UDPStream::endpoint_t{}, senderSessionID);
+            m_client.m_stream.registerClient(SGCore::Net::RUDPStream::endpoint_t{}, senderSessionID);
         };
 
         m_client.connect("127.0.0.1", 3045);

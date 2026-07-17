@@ -10,5 +10,7 @@
 struct GetPlayersMessage
 {
     sg_implement_nonvirtual_type_id(GetPlayersMessage);
+
+    static constexpr bool use_rudp = true;
 };
 #pragma pop(pack)

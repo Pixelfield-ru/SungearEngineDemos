@@ -12,6 +12,8 @@ struct GetPlayersResponseMessage
 {
     sg_implement_nonvirtual_type_id(GetPlayersResponseMessage);
 
+    static constexpr bool use_rudp = true;
+
     std::array<std::int64_t, 40> m_players;
     std::int32_t m_playersCount {};
 };
