@@ -12,6 +12,7 @@ struct AuthResponseMessage
     sg_implement_nonvirtual_type_id(AuthResponseMessage);
 
     static constexpr bool use_rudp = true;
+    static constexpr bool use_for_auth = true;
 
     std::int64_t m_sessionID = -1;
 };

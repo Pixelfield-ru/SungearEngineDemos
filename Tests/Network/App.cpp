@@ -111,6 +111,8 @@ void App::onInit() noexcept
 
             LOG_I(LOG_TAG, "i am client and i have session id: {}. now i want to get players!", m_client.m_stream.m_sessionID.load());
 
+            m_client.send(SGCore::Net::GotReliablePacketMessage{});
+
             m_client.send(GetPlayersMessage{});
         };
 
@@ -129,6 +131,7 @@ void App::onInit() noexcept
             for(size_t i = 0; i < response.m_players.size(); ++i)
             {
                 if(i >= response.m_playersCount) break;
+                if(m_client.m_stream.m_sessionID == response.m_players[i]) continue;
 
                 const auto sessionID = response.m_players[i];
 
