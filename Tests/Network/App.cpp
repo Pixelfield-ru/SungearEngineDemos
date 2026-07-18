@@ -7,6 +7,7 @@
 #include <SGCore/Input/PCInput.h>
 #include <SGCore/Network/ClientConnectedMessage.h>
 #include <SGCore/Network/ClientDisconnectedMessage.h>
+#include <SGCore/Network/GotReliablePacketMessage.h>
 #include <SGCore/Network/Packet.h>
 #include <SGCore/Render/MeshBuilder.h>
 #include <SGCore/Render/Alpha/OpaqueEntityTag.h>
@@ -34,6 +35,9 @@ void App::onInit() noexcept
         m_server->m_clientTimeout = std::chrono::seconds(10);
 
         auto& authResponseType = m_server->m_stream.registerDataType<AuthResponseMessage>();
+        authResponseType.onSendFailed = [](const SGCore::Net::Packet& data, boost::asio::ip::udp::endpoint targetEndpoint, SGCore::Net::session_id_t targetSessionID) {
+            LOG_E(SGCORE_TAG, "Failed to send auth response message to client with session {}", targetSessionID);
+        };
 
         auto& authType = m_server->m_stream.registerDataType<AuthMessage>();
         authType.m_authRequired = false;
@@ -43,12 +47,15 @@ void App::onInit() noexcept
             if(m_server->m_stream.isClientRegistered(senderSessionID))
             {
                 LOG_I(LOG_TAG, "this client is registered!");
+                m_server->send(SGCore::Net::GotReliablePacketMessage{}, senderSessionID);
                 return;
             }
 
             LOG_I(LOG_TAG, "client is not registered! assigning {} as session ID!", m_currentMaxID);
 
             m_server->m_stream.registerClient(senderEndpoint, m_currentMaxID);
+
+            m_server->send(SGCore::Net::GotReliablePacketMessage{}, m_currentMaxID);
 
             AuthResponseMessage response;
             response.m_sessionID = m_currentMaxID;
