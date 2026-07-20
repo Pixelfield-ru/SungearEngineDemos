@@ -90,6 +90,12 @@ void App::onInit() noexcept
             m_server->send(response, senderSessionID);
         };
 
+        auto& transformType = m_server->m_stream.registerDataType<TransformMessage>();
+        transformType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::RUDPStream::endpoint_t senderEndpoint, SGCore::Net::session_id_t senderSessionID) {
+            const auto& transform = *reinterpret_cast<const TransformMessage*>(packet.data());
+            m_server->propagate(transform, m_currentMaxID);
+        };
+
         m_server->runReceivePoll();
 
         LOG_I(LOG_TAG, "network test: server created and running");
@@ -117,9 +123,11 @@ void App::onInit() noexcept
         };
 
         auto& disconnectedType = m_client.m_stream.registerDataType<SGCore::Net::ClientDisconnectedMessage>();
-        disconnectedType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::RUDPStream::endpoint_t senderEndpoint, SGCore::Net::session_id_t senderSessionID) {
+        disconnectedType.onReceive = [this, ecsRegistry](const SGCore::Net::Packet& packet, SGCore::Net::RUDPStream::endpoint_t senderEndpoint, SGCore::Net::session_id_t senderSessionID) {
             LOG_I(LOG_TAG, "disconnected client with session id: {}", senderSessionID);
             m_client.m_stream.removeClient(senderSessionID);
+
+            ecsRegistry->get<SGCore::EntityBaseInfo>(m_players[senderSessionID]).destroy(*ecsRegistry);
         };
 
         auto& getPlayersType = m_client.m_stream.registerDataType<GetPlayersMessage>();
@@ -137,6 +145,8 @@ void App::onInit() noexcept
 
                 LOG_I(LOG_TAG, "got player with session id: {}", sessionID);
                 m_client.m_stream.registerClient(SGCore::Net::RUDPStream::endpoint_t{}, sessionID);
+
+                createPlayer(sessionID);
             }
         };
 
@@ -146,6 +156,21 @@ void App::onInit() noexcept
             LOG_I(LOG_TAG, "client connected with session id: {}", senderSessionID);
 
             m_client.m_stream.registerClient(SGCore::Net::RUDPStream::endpoint_t{}, senderSessionID);
+
+            createPlayer(senderSessionID);
+        };
+
+        auto& transformType = m_client.m_stream.registerDataType<TransformMessage>();
+        transformType.onReceive = [ecsRegistry, this](const SGCore::Net::Packet& packet, SGCore::Net::RUDPStream::endpoint_t senderEndpoint, SGCore::Net::session_id_t senderSessionID) {
+            // std::cout << "got transform" << std::endl;
+            const auto& msg = reinterpret_cast<const TransformMessage&>(*packet.data());
+
+            const auto playerEntity = m_players[senderSessionID];
+
+            auto& playerTransform = ecsRegistry->get<SGCore::Transform>(playerEntity);
+
+            playerTransform.m_localTransform.m_position = msg.m_position;
+            playerTransform.m_localTransform.m_rotation = msg.m_rotation;
         };
 
         m_client.connect("127.0.0.1", 3045);
@@ -160,33 +185,6 @@ void App::onInit() noexcept
 
             playerTransform.m_localTransform.m_position = msg.m_position;
             playerTransform.m_localTransform.m_rotation = msg.m_rotation;
-        };
-
-        m_client.registerDataStream<AnyMessage>().onReceive = [](const SGCore::Net::Packet& packet, boost::asio::ip::udp::endpoint clientEndpoint) {
-            std::cout << packet.data() << std::endl;
-        };
-
-        m_client.registerDataStream<PlayerInfoMessage>().onReceive = [ecsRegistry, this](const SGCore::Net::Packet& packet, boost::asio::ip::udp::endpoint clientEndpoint) {
-            const auto& msg = reinterpret_cast<const PlayerInfoMessage&>(*packet.data());
-
-            const auto playerEntity = ecsRegistry->create();
-            auto& playerMesh = ecsRegistry->emplace<SGCore::Mesh>(playerEntity);
-            auto& playerTransform = ecsRegistry->emplace<SGCore::Transform>(playerEntity);
-            ecsRegistry->emplace<SGCore::EnableMeshPass>(playerEntity);
-            ecsRegistry->emplace<SGCore::OpaqueEntityTag>(playerEntity);
-
-            playerMesh.m_base.setMeshData(m_exampleMesh.m_base.getMeshData());
-
-            m_players[msg.m_playerID] = playerEntity;
-        };*/
-
-        /*m_client.registerDataStream<SGCore::Net::ClientConnectedMessage>().onReceive = [](const SGCore::Net::Packet& packet, boost::asio::ip::udp::endpoint clientEndpoint) {
-            std::cout << "network test: client connected" << std::endl;
-
-
-        };
-        m_client.registerDataStream<SGCore::Net::ClientDisconnectedMessage>().onReceive = [](const SGCore::Net::Packet& packet, boost::asio::ip::udp::endpoint clientEndpoint) {
-            std::cout << "network test: client disconnected" << std::endl;
         };*/
 
         m_client.runReceivePoll();
@@ -199,16 +197,15 @@ void App::onUpdate(double dt, double fixedDt) noexcept
 {
     if(m_startupType == StartupType::CLIENT)
     {
-        /*auto ecsRegistry = SGCore::Scene::getCurrentScene()->getECSRegistry();
+        auto ecsRegistry = SGCore::Scene::getCurrentScene()->getECSRegistry();
 
         auto& cameraTransform = ecsRegistry->get<SGCore::Transform>(m_cameraEntity);
 
         TransformMessage msg;
         msg.m_position = cameraTransform.m_localTransform.m_position;
         msg.m_rotation = cameraTransform.m_localTransform.m_rotation;
-        msg.m_playerID = m_myID;
 
-        m_client.send(msg);*/
+        m_client.send(msg);
 
         if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_0))
         {
@@ -227,4 +224,19 @@ void App::onUpdate(double dt, double fixedDt) noexcept
 void App::onFixedUpdate(double dt, double fixedDt) noexcept
 {
 
+}
+
+void App::createPlayer(SGCore::Net::session_id_t playerSessionID) noexcept
+{
+    auto ecsRegistry = SGCore::Scene::getCurrentScene()->getECSRegistry();
+
+    const auto playerEntity = ecsRegistry->create();
+    auto& playerMesh = ecsRegistry->emplace<SGCore::Mesh>(playerEntity);
+    auto& playerTransform = ecsRegistry->emplace<SGCore::Transform>(playerEntity);
+    ecsRegistry->emplace<SGCore::EnableMeshPass>(playerEntity);
+    ecsRegistry->emplace<SGCore::OpaqueEntityTag>(playerEntity);
+
+    playerMesh.m_base.setMeshData(m_exampleMesh.m_base.getMeshData());
+
+    m_players[playerSessionID] = playerEntity;
 }

@@ -27,11 +27,13 @@ private:
     std::optional<SGCore::Net::Server> m_server;
     SGCore::Net::Client m_client;
 
-    std::unordered_map<std::int32_t, SGCore::ECS::entity_t> m_players;
+    std::unordered_map<SGCore::Net::session_id_t, SGCore::ECS::entity_t> m_players;
 
     std::int64_t m_currentMaxID = 1;
 
     SGCore::Mesh m_exampleMesh;
+
+    void createPlayer(SGCore::Net::session_id_t playerSessionID) noexcept;
 
     // SGCore::ECS::entity_t m_playerEntity = entt::null;
 };
