@@ -93,7 +93,7 @@ void App::onInit() noexcept
         auto& transformType = m_server->m_stream.registerDataType<TransformMessage>();
         transformType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::RUDPStream::endpoint_t senderEndpoint, SGCore::Net::session_id_t senderSessionID) {
             const auto& transform = *reinterpret_cast<const TransformMessage*>(packet.data());
-            m_server->propagate(transform, m_currentMaxID);
+            m_server->propagate(transform, senderSessionID);
         };
 
         m_server->runReceivePoll();
@@ -125,9 +125,8 @@ void App::onInit() noexcept
         auto& disconnectedType = m_client.m_stream.registerDataType<SGCore::Net::ClientDisconnectedMessage>();
         disconnectedType.onReceive = [this, ecsRegistry](const SGCore::Net::Packet& packet, SGCore::Net::RUDPStream::endpoint_t senderEndpoint, SGCore::Net::session_id_t senderSessionID) {
             LOG_I(LOG_TAG, "disconnected client with session id: {}", senderSessionID);
-            m_client.m_stream.removeClient(senderSessionID);
 
-            ecsRegistry->get<SGCore::EntityBaseInfo>(m_players[senderSessionID]).destroy(*ecsRegistry);
+            removePlayer(senderSessionID);
         };
 
         auto& getPlayersType = m_client.m_stream.registerDataType<GetPlayersMessage>();
@@ -144,7 +143,6 @@ void App::onInit() noexcept
                 const auto sessionID = response.m_players[i];
 
                 LOG_I(LOG_TAG, "got player with session id: {}", sessionID);
-                m_client.m_stream.registerClient(SGCore::Net::RUDPStream::endpoint_t{}, sessionID);
 
                 createPlayer(sessionID);
             }
@@ -154,8 +152,6 @@ void App::onInit() noexcept
         clientConnectedType.m_authRequired = false;
         clientConnectedType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::RUDPStream::endpoint_t senderEndpoint, SGCore::Net::session_id_t senderSessionID) {
             LOG_I(LOG_TAG, "client connected with session id: {}", senderSessionID);
-
-            m_client.m_stream.registerClient(SGCore::Net::RUDPStream::endpoint_t{}, senderSessionID);
 
             createPlayer(senderSessionID);
         };
@@ -228,6 +224,8 @@ void App::onFixedUpdate(double dt, double fixedDt) noexcept
 
 void App::createPlayer(SGCore::Net::session_id_t playerSessionID) noexcept
 {
+    if(m_players.contains(playerSessionID)) return;
+
     auto ecsRegistry = SGCore::Scene::getCurrentScene()->getECSRegistry();
 
     const auto playerEntity = ecsRegistry->create();
@@ -238,5 +236,16 @@ void App::createPlayer(SGCore::Net::session_id_t playerSessionID) noexcept
 
     playerMesh.m_base.setMeshData(m_exampleMesh.m_base.getMeshData());
 
+    m_client.m_stream.registerClient(SGCore::Net::RUDPStream::endpoint_t{}, playerSessionID);
     m_players[playerSessionID] = playerEntity;
+}
+
+void App::removePlayer(SGCore::Net::session_id_t playerSessionID) noexcept
+{
+    auto ecsRegistry = SGCore::Scene::getCurrentScene()->getECSRegistry();
+
+    ecsRegistry->get<SGCore::EntityBaseInfo>(m_players[playerSessionID]).destroy(*ecsRegistry);
+
+    m_client.m_stream.removeClient(playerSessionID);
+    m_players.erase(playerSessionID);
 }

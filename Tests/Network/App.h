@@ -34,6 +34,7 @@ private:
     SGCore::Mesh m_exampleMesh;
 
     void createPlayer(SGCore::Net::session_id_t playerSessionID) noexcept;
+    void removePlayer(SGCore::Net::session_id_t playerSessionID) noexcept;
 
     // SGCore::ECS::entity_t m_playerEntity = entt::null;
 };
