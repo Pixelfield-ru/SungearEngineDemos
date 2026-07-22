@@ -104,9 +104,6 @@ void App::onInit() noexcept
     {
         auto ecsRegistry = SGCore::Scene::getCurrentScene()->getECSRegistry();
 
-        /*std::srand(std::time(nullptr));
-        m_myID = std::rand();*/
-
         SGCore::MeshBuilder::buildBox3D(m_exampleMesh.m_base, { 4.0, 4.0, 4.0 });
 
         auto& authType = m_client.m_stream.registerDataType<AuthMessage>();
@@ -170,18 +167,6 @@ void App::onInit() noexcept
         };
 
         m_client.connect("127.0.0.1", 3045);
-
-        /*m_client.registerDataStream<TransformMessage>().onReceive = [ecsRegistry, this](const SGCore::Net::Packet& packet, boost::asio::ip::udp::endpoint clientEndpoint) {
-            // std::cout << "got transform" << std::endl;
-            const auto& msg = reinterpret_cast<const TransformMessage&>(*packet.data());
-
-            const auto playerEntity = m_players[msg.m_playerID];
-
-            auto& playerTransform = ecsRegistry->get<SGCore::Transform>(playerEntity);
-
-            playerTransform.m_localTransform.m_position = msg.m_position;
-            playerTransform.m_localTransform.m_rotation = msg.m_rotation;
-        };*/
 
         m_client.runReceivePoll();
 
