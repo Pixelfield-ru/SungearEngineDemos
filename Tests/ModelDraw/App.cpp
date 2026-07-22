@@ -246,7 +246,7 @@ void App::onInit() noexcept
 
     m_distortionFX = SGCore::MakeRef<SGCore::Distortion>();
 
-    auto& frameReceiver = ecsRegistry->get<SGCore::LayeredFrameReceiver>(getCameraEntity());
+    auto& frameReceiver = ecsRegistry->get<SGCore::LayeredFrameReceiver>(m_cameraEntity);
 
     auto ppLayer0 = frameReceiver.addLayer("distortion_layer");
     ppLayer0->addEffect(m_distortionFX);
@@ -461,7 +461,7 @@ void App::onUpdate(double dt, double fixedDt)
         const auto ecsRegistry = currentScene->getECSRegistry();
         const auto debugDraw = SGCore::RenderPipelinesManager::instance().getCurrentRenderPipeline()->getRenderPass<SGCore::DebugDraw>();
 
-        auto& cameraRenderingBase = ecsRegistry->get<SGCore::RenderingBase>(getCameraEntity());
+        auto& cameraRenderingBase = ecsRegistry->get<SGCore::RenderingBase>(m_cameraEntity);
 
         for(auto joint : m_roboarmJoints)
         {
@@ -523,7 +523,7 @@ void App::onUpdate(double dt, double fixedDt)
 
     if(SGCore::Input::PC::keyboardKeyReleased(SGCore::Input::KeyboardKey::KEY_4))
     {
-        auto& frameReceiver = currentScene->getECSRegistry()->get<SGCore::LayeredFrameReceiver>(getCameraEntity());
+        auto& frameReceiver = currentScene->getECSRegistry()->get<SGCore::LayeredFrameReceiver>(m_cameraEntity);
         auto ssaoEffect = frameReceiver.getDefaultLayer()->getEffect<SGCore::SSAO>();
         ssaoEffect->setEnabled(!ssaoEffect->isEnabled());
     }

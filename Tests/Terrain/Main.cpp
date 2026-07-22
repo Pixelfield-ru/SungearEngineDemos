@@ -35,8 +35,6 @@
 
 #include "SGCore/Navigation/NavGrid3D.h"
 #include "SGCore/Navigation/NavMesh/NavMesh.h"
-#include "SGCore/Navigation/NavMesh/Steps/InputFilteringStep.h"
-#include "SGCore/Navigation/NavMesh/Steps/VoxelizationStep.h"
 #include "SGCore/Render/DebugDraw.h"
 #include "SGCore/Render/Lighting/SpotLight.h"
 #include "SGCore/Render/Terrain/TerrainUtils.h"
@@ -130,10 +128,10 @@ void createBallAndApplyImpulse(const glm::vec3& spherePos,
     auto& sphereRigidbody3D = scene->getECSRegistry()->emplace<SGCore::Rigidbody3D>(sphereEntities[2],
             scene->getSystem<SGCore::PhysicsWorld3D>());
 
-    SGCore::Ref<btSphereShape> sphereRigidbody3DShape = SGCore::MakeRef<btSphereShape>(1.0);
+    auto sphereRigidbody3DShape = SGCore::MakeScope<btSphereShape>(1.0);
     btTransform sphereShapeTransform;
     sphereShapeTransform.setIdentity();
-    sphereRigidbody3D.addShape(sphereShapeTransform, sphereRigidbody3DShape);
+    sphereRigidbody3D.addShape(sphereShapeTransform, std::move(sphereRigidbody3DShape));
     sphereRigidbody3D.setType(SGCore::PhysicalObjectType::OT_DYNAMIC);
     sphereRigidbody3D.m_body->setRestitution(0.9);
     btScalar mass = 100.0f;
@@ -160,11 +158,11 @@ void regenerateTerrainPhysicalMesh(SGCore::ECS::entity_t terrainEntity)
     // generating terrain physical mesh
     terrainComponent.generatePhysicalMesh(terrainMesh, 5);
 
-    SGCore::Ref<btBvhTriangleMeshShape> terrainRigidbodyShape = SGCore::MakeRef<btBvhTriangleMeshShape>(terrainMeshData->m_physicalMesh.get(), true);
+    auto terrainRigidbodyShape = SGCore::MakeScope<btBvhTriangleMeshShape>(terrainMeshData->m_physicalMesh.get(), true);
     btTransform terrainShapeTransform;
     terrainShapeTransform.setIdentity();
     terrainRigidbody.removeAllShapes();
-    terrainRigidbody.addShape(terrainShapeTransform, terrainRigidbodyShape);
+    terrainRigidbody.addShape(terrainShapeTransform, std::move(terrainRigidbodyShape));
 
     terrainRigidbody.reAddToWorld();
 }
@@ -185,7 +183,7 @@ void regenerateTerrainNavGrid(SGCore::ECS::entity_t terrainEntity)
 
     SGCore::TerrainUtils::calculateVerticesUsingDisplacementMap(terrainComponent, terrainDisplacementTex.get(), 5, terrainDisplacedVertices, terrainDisplacedIndices);
 
-    std::vector<SGCore::MathPrimitivesUtils::Triangle<>> inputTriangles;
+    std::vector<SGCore::Primitives::Triangle<>> inputTriangles;
 
     for(size_t i = 0; i < terrainDisplacedVertices.size(); i += 4)
     {
@@ -194,11 +192,11 @@ void regenerateTerrainNavGrid(SGCore::ECS::entity_t terrainEntity)
         const auto& v2 = terrainDisplacedVertices[terrainDisplacedIndices[i] + 2];
         const auto& v3 = terrainDisplacedVertices[terrainDisplacedIndices[i] + 3];
 
-        SGCore::MathPrimitivesUtils::Triangle<> tri0 {
+        SGCore::Primitives::Triangle<> tri0 {
             .m_vertices = { v0.m_position, v1.m_position, v2.m_position }
         };
 
-        SGCore::MathPrimitivesUtils::Triangle<> tri1 {
+        SGCore::Primitives::Triangle<> tri1 {
             .m_vertices = { v1.m_position, v2.m_position, v3.m_position }
         };
 
@@ -209,7 +207,6 @@ void regenerateTerrainNavGrid(SGCore::ECS::entity_t terrainEntity)
         inputTriangles.push_back(tri1);
     }
 
-    terrainNavMesh.useStandardSteps();
     terrainNavMesh.build(inputTriangles);
 
 
@@ -677,10 +674,10 @@ void coreInit()
     // generating terrain physical mesh
     terrainComponent.generatePhysicalMesh(terrainMesh, 10);
 
-    SGCore::Ref<btBvhTriangleMeshShape> terrainRigidbodyShape = SGCore::MakeRef<btBvhTriangleMeshShape>(terrainMeshData->m_physicalMesh.get(), true);
+    auto terrainRigidbodyShape = SGCore::MakeScope<btBvhTriangleMeshShape>(terrainMeshData->m_physicalMesh.get(), true);
     btTransform terrainShapeTransform;
     terrainShapeTransform.setIdentity();
-    terrainRigidbody.addShape(terrainShapeTransform, terrainRigidbodyShape);
+    terrainRigidbody.addShape(terrainShapeTransform, std::move(terrainRigidbodyShape));
     btScalar mass = 0.0f;
     btVector3 inertia(0, 0, 0);
     terrainRigidbody.m_body->setMassProps(mass, inertia);

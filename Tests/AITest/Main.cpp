@@ -32,9 +32,6 @@
 #include "SGCore/Render/Atmosphere/Atmosphere.h"
 #include "SGCore/Memory/Assets/Materials/IMaterial.h"
 #include "SGCore/Navigation/NavMesh/NavMesh.h"
-#include "SGCore/Navigation/NavMesh/Steps/InputFilteringStep.h"
-#include "SGCore/Navigation/NavMesh/Steps/RegionsPartitionStep.h"
-#include "SGCore/Navigation/NavMesh/Steps/VoxelizationStep.h"
 #include "SGCore/Render/DebugDraw.h"
 #include "SGCore/Render/Lighting/SpotLight.h"
 #include "Sources/States.h"
@@ -69,7 +66,7 @@ void regenerateNavMesh()
 
     auto& navMesh = scene->getECSRegistry()->get<SGCore::Navigation::NavMesh>(navMeshEntity);
 
-    std::vector<SGCore::MathPrimitivesUtils::Triangle<>> navMeshTriangles;
+    std::vector<SGCore::Primitives::Triangle<>> navMeshTriangles;
 
     for(auto e : meshesEntities)
     {
@@ -84,7 +81,7 @@ void regenerateNavMesh()
             const auto& v1 = mesh->m_base.getMeshData()->m_vertices[mesh->m_base.getMeshData()->m_indices[i + 1]];
             const auto& v2 = mesh->m_base.getMeshData()->m_vertices[mesh->m_base.getMeshData()->m_indices[i + 2]];
 
-            SGCore::MathPrimitivesUtils::Triangle<> tri;
+            SGCore::Primitives::Triangle<> tri;
             tri.m_vertices[0] = transform.m_worldTransform.m_animatedModelMatrix * glm::vec4(v0.m_position, 1.0f);
             tri.m_vertices[1] = transform.m_worldTransform.m_animatedModelMatrix * glm::vec4(v1.m_position, 1.0f);
             tri.m_vertices[2] = transform.m_worldTransform.m_animatedModelMatrix * glm::vec4(v2.m_position, 1.0f);
@@ -172,7 +169,6 @@ void coreInit()
     // creating navmesh
 
     auto& navMesh = ecsRegistry->emplace<SGCore::Navigation::NavMesh>(navMeshEntity);
-    navMesh.useStandardSteps();
     /*navMesh.m_config.m_cellHeight = 5.0f;
     navMesh.m_config.m_cellSize = 5.0f;*/
     navMesh.m_config.m_cellHeight = 1.0f;

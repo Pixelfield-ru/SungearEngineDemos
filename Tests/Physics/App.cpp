@@ -33,10 +33,10 @@ void App::createBallAndApplyImpulse(const glm::vec3& spherePos, const glm::vec3&
 
     auto& sphereRigidbody3D = ecsRegistry->emplace<SGCore::Rigidbody3D>(sphereEntities[2], scene->getSystem<SGCore::PhysicsWorld3D>());
 
-    SGCore::Ref<btSphereShape> sphereRigidbody3DShape = SGCore::MakeRef<btSphereShape>(1.0);
+    auto sphereRigidbody3DShape = SGCore::MakeScope<btSphereShape>(1.0);
     btTransform shapeTransform;
     shapeTransform.setIdentity();
-    sphereRigidbody3D.addShape(shapeTransform, sphereRigidbody3DShape);
+    sphereRigidbody3D.addShape(shapeTransform, std::move(sphereRigidbody3DShape));
     sphereRigidbody3D.setType(SGCore::PhysicalObjectType::OT_DYNAMIC);
     sphereRigidbody3D.m_body->setRestitution(0.9);
     sphereRigidbody3D.m_body->setFriction(1.0);
@@ -93,7 +93,7 @@ void App::onInit() noexcept
     playerTransform.m_localTransform.m_position = { 300, 10.0f, 0.0f };
     playerTransform.m_localTransform.m_scale = { 1.0f, 1.8f, 1.0f };
 
-    auto playerRigidbody3D = ecsRegistry->emplace<SGCore::Rigidbody3D>(m_playerEntity, SGCore::MakeRef<SGCore::Rigidbody3D>(physicsWorld));
+    auto& playerRigidbody3D = ecsRegistry->emplace<SGCore::Rigidbody3D>(m_playerEntity, SGCore::MakeRef<SGCore::Rigidbody3D>(physicsWorld));
 
     // ===============================
     // ====================== creating floor
@@ -109,10 +109,10 @@ void App::onInit() noexcept
 
     auto& floorRigidbody3D = ecsRegistry->emplace<SGCore::Rigidbody3D>(m_floorEntity, physicsWorld);
 
-    auto floorShape = SGCore::MakeRef<btBoxShape>(btVector3(250.0f, 1.0f, 250.0f));
+    auto floorShape = SGCore::MakeScope<btBoxShape>(btVector3(250.0f, 1.0f, 250.0f));
     btTransform shapeTransform;
     shapeTransform.setIdentity();
-    floorRigidbody3D.addShape(shapeTransform, floorShape);
+    floorRigidbody3D.addShape(shapeTransform, std::move(floorShape));
     floorRigidbody3D.setType(SGCore::PhysicalObjectType::OT_STATIC);
     floorRigidbody3D.m_body->setRestitution(0.2f);
     floorRigidbody3D.m_body->setFriction(1.0f);
@@ -138,11 +138,11 @@ void App::onInit() noexcept
     const auto& humanBones = m_humanSkeleton->getAllBones();
 
     static auto addShape = [](SGCore::Rigidbody3D& rigidbody, float mass, float radius, SGCore::PhysicalObjectType objectType, glm::vec3 shapeOffset = {}) {
-        auto shape = SGCore::MakeRef<btSphereShape>(radius);
+        auto shape = SGCore::MakeScope<btSphereShape>(radius);
         btTransform shapeTransform;
         shapeTransform.setIdentity();
         shapeTransform.setOrigin({ shapeOffset.x, shapeOffset.y, shapeOffset.z });
-        rigidbody.addShape(shapeTransform, shape);
+        rigidbody.addShape(shapeTransform, std::move(shape));
         rigidbody.setType(objectType);
         rigidbody.m_body->setRestitution(0.0);
         rigidbody.m_body->setFriction(0.8f);
@@ -153,11 +153,11 @@ void App::onInit() noexcept
     };
 
     static auto addCapsuleShape = [](SGCore::Rigidbody3D& rigidbody, float mass, float radius, float height, SGCore::PhysicalObjectType objectType, glm::vec3 shapeOffset = {}) {
-        auto shape = SGCore::MakeRef<btCapsuleShape>(radius, height);
+        auto shape = SGCore::MakeScope<btCapsuleShape>(radius, height);
         btTransform shapeTransform;
         shapeTransform.setIdentity();
         shapeTransform.setOrigin({ shapeOffset.x, shapeOffset.y, shapeOffset.z });
-        rigidbody.addShape(shapeTransform, shape);
+        rigidbody.addShape(shapeTransform, std::move(shape));
         rigidbody.setType(objectType);
         rigidbody.m_body->setRestitution(0.0);
         rigidbody.m_body->setFriction(0.8f);
@@ -271,7 +271,7 @@ void App::onUpdate(double dt, double fixedDt) noexcept
 
     // std::println(std::cout, "sphere1Transform pos: {}", glm::to_string(sphere1Transform->m_worldTransform.m_position));
 
-    auto& cameraTransform = ecsRegistry->get<SGCore::Transform>(getCameraEntity());
+    auto& cameraTransform = ecsRegistry->get<SGCore::Transform>(m_cameraEntity);
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_1))
     {

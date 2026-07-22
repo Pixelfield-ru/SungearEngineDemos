@@ -21,7 +21,7 @@ void App::onInit() noexcept
     auto ecsRegistry = scene->getECSRegistry();
     auto assetManager = SGCore::AssetManager::getInstance();
 
-    ecsRegistry->remove<SGCore::Controllable3D>(getCameraEntity());
+    ecsRegistry->remove<SGCore::Controllable3D>(m_cameraEntity);
 
     m_cubeModel = assetManager->loadAssetWithAlias<SGCore::ModelAsset>(
         "cube_model",
@@ -32,11 +32,11 @@ void App::onInit() noexcept
     m_playerEntity = m_cubeModel->m_rootNode->addOnScene(scene)[0];
 
     static auto addShape = [](SGCore::Rigidbody3D& rigidbody, float mass, const glm::vec3& halfExtents, SGCore::PhysicalObjectType objectType, glm::vec3 shapeOffset = {}) {
-        auto shape = SGCore::MakeRef<btBoxShape>(btVector3 { halfExtents.x, halfExtents.y, halfExtents.z });
+        auto shape = SGCore::MakeScope<btBoxShape>(btVector3 { halfExtents.x, halfExtents.y, halfExtents.z });
         btTransform shapeTransform;
         shapeTransform.setIdentity();
         shapeTransform.setOrigin({ shapeOffset.x, shapeOffset.y, shapeOffset.z });
-        rigidbody.addShape(shapeTransform, shape);
+        rigidbody.addShape(shapeTransform, std::move(shape));
         rigidbody.setType(objectType);
         rigidbody.m_body->setRestitution(0.0);
         rigidbody.m_body->setFriction(0.8f);
@@ -63,8 +63,8 @@ void App::onInit() noexcept
     cubeEntity1Transform.m_localTransform.m_scale = { 1.0f, 1.0f, 1.0f };
     cubeEntity1Transform.m_localTransform.m_position.y += 10.0f;
 
-    ecsRegistry->get<SGCore::EntityBaseInfo>(getCameraEntity()).setParent(m_playerEntity, *ecsRegistry);
-    auto& cameraTransform = ecsRegistry->get<SGCore::Transform>(getCameraEntity());
+    ecsRegistry->get<SGCore::EntityBaseInfo>(m_cameraEntity).setParent(m_playerEntity, *ecsRegistry);
+    auto& cameraTransform = ecsRegistry->get<SGCore::Transform>(m_cameraEntity);
     cameraTransform.m_localTransform.m_position = { 0.0f, 5.0f, 10.0f };
     cameraTransform.m_localTransform.m_rotation *= glm::quat({ glm::radians(-20.0f), glm::radians(0.0f), glm::radians(0.0f) });
     // cameraTransform->m_localTransform.m_yawPitchRoll = { -20.0f, 0.0f, 0.0f };
@@ -81,7 +81,7 @@ void App::onUpdate(double dt, double fixedDt)
 
     auto& playerTransform = ecsRegistry->get<SGCore::Transform>(m_playerEntity);
     auto& playerRigidbody = ecsRegistry->get<SGCore::Rigidbody3D>(m_playerEntity);
-    auto& cameraTransform = ecsRegistry->get<SGCore::Transform>(getCameraEntity());
+    auto& cameraTransform = ecsRegistry->get<SGCore::Transform>(m_cameraEntity);
 
     if(SGCore::Input::PC::keyboardKeyDown(SGCore::Input::KeyboardKey::KEY_W))
     {
