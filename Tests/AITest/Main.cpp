@@ -133,10 +133,10 @@ void coreInit()
     // creating camera entity
     mainCamera = ecsRegistry->create();
     // creating components for entity
-    auto cameraTransform = ecsRegistry->emplace<SGCore::Transform>(mainCamera, SGCore::MakeRef<SGCore::Transform>());
+    auto cameraTransform = ecsRegistry->emplace<SGCore::Transform>(mainCamera);
     ecsRegistry->emplace<SGCore::NonSavable>(mainCamera);
-    ecsRegistry->emplace<SGCore::Camera3D>(mainCamera, SGCore::MakeRef<SGCore::Camera3D>());
-    ecsRegistry->emplace<SGCore::RenderingBase>(mainCamera, SGCore::MakeRef<SGCore::RenderingBase>());
+    ecsRegistry->emplace<SGCore::Camera3D>(mainCamera);
+    ecsRegistry->emplace<SGCore::RenderingBase>(mainCamera);
     ecsRegistry->emplace<SGCore::Controllable3D>(mainCamera)/*.m_movementSpeed = 100.0f*/;
     auto& cameraReceiver = ecsRegistry->emplace<SGCore::LayeredFrameReceiver>(mainCamera);
 

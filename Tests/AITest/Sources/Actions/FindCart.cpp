@@ -40,7 +40,7 @@ SGCore::Coro::Task<SGCore::GOAP::ExecutionResult> FindCart::executeImpl(SGCore::
     if(!tmpTransform) co_return SGCore::GOAP::ExecutionResult::EXEC_FAILED;
 
     const auto& entityTransform = *tmpTransform;
-    const auto& entityPosition = entityTransform->m_worldTransform.m_position;
+    const auto& entityPosition = entityTransform.m_worldTransform.m_position;
 
     std::pair<glm::vec3, SGCore::ECS::entity_t> nearestCart {
         std::numeric_limits<float>::max(),
@@ -56,14 +56,14 @@ SGCore::Coro::Task<SGCore::GOAP::ExecutionResult> FindCart::executeImpl(SGCore::
             co_return SGCore::GOAP::ExecutionResult::EXEC_PAUSED;
         }
 
-        const auto& cartPosition = transform->m_worldTransform.m_position;
+        const auto& cartPosition = transform.m_worldTransform.m_position;
 
         if(glm::distance2(cartPosition, entityPosition) > glm::distance2(nearestCart.first, entityPosition))
         {
             continue;
         }
 
-        nearestCart.first = transform->m_worldTransform.m_position;
+        nearestCart.first = transform.m_worldTransform.m_position;
         nearestCart.second = cartEntity;
     }
 

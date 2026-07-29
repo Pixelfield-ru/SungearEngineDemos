@@ -80,8 +80,8 @@ void App::onInit() noexcept
 
     auto& csmTarget = ecsRegistry->emplace<SGCore::CSMTarget>(m_cameraEntity);
 
-    // m_locationModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/Navigation/Resources/location_1/ai_test.gltf");
-    m_locationModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/AITest/Resources/location_0/scene.gltf");
+    m_locationModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/Navigation/Resources/location_1/ai_test.gltf");
+    // m_locationModel = assetManager->loadAsset<SGCore::ModelAsset>(demosPath / "Tests/AITest/Resources/location_0/scene.gltf");
     auto locationEntities = m_locationModel->m_rootNode->addOnScene(SGCore::Scene::getCurrentScene());
     for(const auto& locationEntity : locationEntities)
     {
@@ -121,7 +121,7 @@ void App::onInit() noexcept
     // SGCore::MeshBuilder::buildSphereVariant1(sphereMesh.m_base, 50.0f, 2.0f);
     SGCore::MeshBuilder::buildBox3D(sphereMesh.m_base, { 4.0, 4.0, 4.0 });
 
-    LOG_I("NavDemo", "Sphere mesh vertices count: {}, indices count: {}", sphereMesh.m_base.getMeshData()->m_vertices.size(), sphereMesh.m_base.getMeshData()->m_indices.size());
+    SG_LOG_I("Sphere mesh vertices count: {}, indices count: {}", sphereMesh.m_base.getMeshData()->m_vertices.size(), sphereMesh.m_base.getMeshData()->m_indices.size());
 
     // ========================== navmesh
 
@@ -145,14 +145,17 @@ void App::onInit() noexcept
 
         auto ssrFX = SGCore::MakeRef<SGCore::SSR>();
         frameReceiver.getDefaultLayer()->addEffect(ssrFX);
+
+        auto bloomFX = SGCore::MakeRef<SGCore::Bloom>();
+        frameReceiver.getDefaultLayer()->addEffect(bloomFX);
     }
 
     {
-        auto ssaoFX = SGCore::MakeRef<SGCore::SSAO>();
+        /*auto ssaoFX = SGCore::MakeRef<SGCore::SSAO>();
         auto bloomFX = SGCore::MakeRef<SGCore::Bloom>();
         auto ssrFX = SGCore::MakeRef<SGCore::SSR>();
 
-        /*bloomLayer->addEffect(ssaoFX);
+        bloomLayer->addEffect(ssaoFX);
         bloomLayer->addEffect(ssrFX);
         bloomLayer->addEffect(bloomFX);*/
     }
@@ -356,7 +359,7 @@ void App::onUpdate(double dt, double fixedDt) noexcept
         auto worldPos = layeredFrameReceiver.m_layersFrameBuffer->readPixelsFromAttachment(cursorRelativePos, SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT4);
         worldPos.y += 3.0f;
 
-        LOG_I("NavDemo", "Click pos: {}", glm::to_string(worldPos));
+        SG_LOG_I("Click pos: {}", glm::to_string(worldPos));
 
         auto& npcTransform = ecsRegistry->get<SGCore::Transform>(m_npcEntity);
 
@@ -365,7 +368,7 @@ void App::onUpdate(double dt, double fixedDt) noexcept
         auto& navMesh = ecsRegistry->get<SGCore::Navigation::NavMesh>(m_navMeshEntity);
         auto path = navMesh.findPath(npcTransform.m_worldTransform.m_position, worldPos, { 100.0f, 100.0f, 100.0f });
 
-        LOG_I("NavDemo", "Path waypoints count: {}", path.size());
+        SG_LOG_I("Path waypoints count: {}", path.size());
 
         m_breakNPCLastWay = true;
 
