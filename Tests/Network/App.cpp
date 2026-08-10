@@ -36,22 +36,22 @@ void App::onInit() noexcept
 
         auto& authResponseType = m_server->m_stream.registerDataType<AuthResponseMessage>();
         authResponseType.onSendFailed = [](const SGCore::Net::Packet& data, boost::asio::ip::udp::endpoint targetEndpoint, SGCore::Net::session_id_t targetSessionID) {
-            LOG_E(SGCORE_TAG, "Failed to send auth response message to client with session {}", targetSessionID);
+            SG_LOG_E("Failed to send auth response message to client with session {}", targetSessionID);
         };
 
         auto& authType = m_server->m_stream.registerDataType<AuthMessage>();
         authType.m_authRequired = false;
         authType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::RUDPStream::endpoint_t senderEndpoint, SGCore::Net::session_id_t senderSessionID) {
-            LOG_I(LOG_TAG, "got new client! his new session id is: {}", senderSessionID);
+            SG_LOG_I("got new client! his new session id is: {}", senderSessionID);
 
             if(m_server->m_stream.isClientRegistered(senderSessionID))
             {
-                LOG_I(LOG_TAG, "this client is registered!");
+                SG_LOG_I("this client is registered!");
                 m_server->send(SGCore::Net::GotReliablePacketMessage{}, senderSessionID);
                 return;
             }
 
-            LOG_I(LOG_TAG, "client is not registered! assigning {} as session ID!", m_currentMaxID);
+            SG_LOG_I("client is not registered! assigning {} as session ID!", m_currentMaxID);
 
             m_server->m_stream.registerClient(senderEndpoint, m_currentMaxID);
 
@@ -98,7 +98,7 @@ void App::onInit() noexcept
 
         m_server->runReceivePoll();
 
-        LOG_I(LOG_TAG, "network test: server created and running");
+        SG_LOG_I("network test: server created and running");
     }
     else
     {
@@ -112,7 +112,7 @@ void App::onInit() noexcept
             const auto& response = *reinterpret_cast<const AuthResponseMessage*>(packet.data());
             m_client.m_stream.m_sessionID = response.m_sessionID;
 
-            LOG_I(LOG_TAG, "i am client and i have session id: {}. now i want to get players!", m_client.m_stream.m_sessionID.load());
+            SG_LOG_I("i am client and i have session id: {}. now i want to get players!", m_client.m_stream.m_sessionID.load());
 
             m_client.send(SGCore::Net::GotReliablePacketMessage{});
 
@@ -121,7 +121,7 @@ void App::onInit() noexcept
 
         auto& disconnectedType = m_client.m_stream.registerDataType<SGCore::Net::ClientDisconnectedMessage>();
         disconnectedType.onReceive = [this, ecsRegistry](const SGCore::Net::Packet& packet, SGCore::Net::RUDPStream::endpoint_t senderEndpoint, SGCore::Net::session_id_t senderSessionID) {
-            LOG_I(LOG_TAG, "disconnected client with session id: {}", senderSessionID);
+            SG_LOG_I("disconnected client with session id: {}", senderSessionID);
 
             removePlayer(senderSessionID);
         };
@@ -139,7 +139,7 @@ void App::onInit() noexcept
 
                 const auto sessionID = response.m_players[i];
 
-                LOG_I(LOG_TAG, "got player with session id: {}", sessionID);
+                SG_LOG_I("got player with session id: {}", sessionID);
 
                 createPlayer(sessionID);
             }
@@ -148,7 +148,7 @@ void App::onInit() noexcept
         auto& clientConnectedType = m_client.m_stream.registerDataType<SGCore::Net::ClientConnectedMessage>();
         clientConnectedType.m_authRequired = false;
         clientConnectedType.onReceive = [this](const SGCore::Net::Packet& packet, SGCore::Net::RUDPStream::endpoint_t senderEndpoint, SGCore::Net::session_id_t senderSessionID) {
-            LOG_I(LOG_TAG, "client connected with session id: {}", senderSessionID);
+            SG_LOG_I("client connected with session id: {}", senderSessionID);
 
             createPlayer(senderSessionID);
         };
